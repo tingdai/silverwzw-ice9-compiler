@@ -1,0 +1,6 @@
+*.output
+*.o
+ice9
+ice9.tab.c
+ice9.tab.h
+ice9.yy.c

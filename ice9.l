@@ -1,12 +1,49 @@
 %{
 #include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 #include "ice9.tab.h"
+int fileno(FILE *stream);
+char * iddmp(char * s) {
+	char *str;
+	unsigned i;
+	for (i = 0; *(s + i) != '\0'; i++) {
+		;
+	}
+	str = malloc(i + 1);
+	while (*(s + i) != '\0') {
+		*(str + i) = *(s + i);
+		i++;
+	}
+	*(str + i) = '\0';
+	return str;
+}
+char * strdmp(char * s) {
+	char *str;
+	unsigned i;
+	assert(*s == '\'' || *s == '"');
+	s++;
+	for (i = 0; *(s + i) != '\0'; i++) {
+		;
+	}
+	str = malloc(i);
+	while (*(s + i) != '\0') {
+		*(str + i) = *(s + i);
+		i++;
+	}
+	assert(*(s + i - 1) == '"' || *(s + i - 1) == '\'');
+	*(str + i - 1) = '\0';
+	return str;
+}
 
 extern void yyerror();
 int yynewlines=1;
+
+
 %}
 
 %option noyywrap
+%option nounput
 
 string	(\"[^\"\n]*\")|(\'[^\'\n]*\')
 
@@ -59,9 +96,9 @@ string	(\"[^\"\n]*\")|(\'[^\'\n]*\')
 ">="		{return TK_GE;}
 "<="		{return TK_LE;}
 
-[0-9]+		{return TK_INT;}
-{string}	{return TK_SLIT;}
-[a-zA-Z][a-zA-Z0-9_]*	{return TK_ID;}
+[0-9]+		{yylval.intt = atoi(yytext);return TK_INT;}
+{string}	{yylval.str = strdmp(yytext);return TK_SLIT;}
+[a-zA-Z][a-zA-Z0-9_]*	{yylval.str = iddmp(yytext);return TK_ID;}
 
 [0-9]+[a-zA-Z][a-zA-Z0-9_]*	{yyerror("Illegal token");exit(-1);}
 

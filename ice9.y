@@ -1,6 +1,7 @@
 %{
 
 #include <stdio.h>
+#include <stdlib.h>
 #define YYDEBUG 1
 extern int yynewlines;
 extern char *yytext;

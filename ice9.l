@@ -54,20 +54,20 @@ string	(\"[^\"\n]*\")|(\'[^\'\n]*\')
 \n		{yynewlines++;}	
 #.*		{;}
 
-"if"		{return TK_IF;}
+"if"		{yylval.intt=yynewlines;return TK_IF;}
 "fi"		{return TK_FI;}
 "else"		{return TK_ELSE;}
-"fa"		{return TK_FA;}
+"fa"		{yylval.intt=yynewlines;return TK_FA;}
 "af"		{return TK_AF;}
 "to"		{return TK_TO;}
-"do"		{return TK_DO;}
+"do"		{yylval.intt=yynewlines;return TK_DO;}
 "od"		{return TK_OD;}
-"proc"		{return TK_PROC;}
+"proc"		{yylval.intt=yynewlines;return TK_PROC;}
 "end"		{return TK_END;}
 "return"	{return TK_RETURN;}
-"forward"	{return TK_FORWARD;}
-"var"		{return TK_VAR;}
-"type"		{return TK_TYPE;}
+"forward"	{yylval.intt=yynewlines;return TK_FORWARD;}
+"var"		{yylval.intt=yynewlines;return TK_VAR;}
+"type"		{yylval.intt=yynewlines;return TK_TYPE;}
 "break"		{return TK_BREAK;}
 "exit"		{return TK_EXIT;}
 "true"		{return TK_TRUE;}
@@ -75,14 +75,14 @@ string	(\"[^\"\n]*\")|(\'[^\'\n]*\')
 "write"		{return TK_WRITE;}
 "writes"	{return TK_WRITES;}
 "read"		{return TK_READ;}
-"[]"		{return TK_BOX;}
+"[]"		{yylval.intt=yynewlines;return TK_BOX;}
 "->"		{return TK_ARROW;}
 "("		{return TK_LBRACK;}
 ")"		{return TK_RBRACK;}
 "["		{return TK_LPAREN;}
 "]"		{return TK_RPAREN;}
 ":"		{return TK_COLON;}
-";"		{return TK_SEMI;}
+";"		{yylval.intt=yynewlines;return TK_SEMI;}
 "="		{return TK_EQ;}
 ":="		{return TK_ASSIGN;}
 "?"		{return TK_QUEST;}

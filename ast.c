@@ -4,13 +4,13 @@
 
 extern int yynewlines;
 
-AST *newNode(NodeType t) {
+AST *newNode(NodeType t, int l) {
 	AST *p;
 	p = (AST *)malloc(sizeof(AST));
 	p -> child = NULL;
 	p -> sym = t;
 	p -> brother = NULL;
-	p -> lineno = yynewlines;
+	p -> lineno = l;
 	return p;
 }
 AST *appendChild(AST *parent, AST * childNd) {
@@ -55,28 +55,28 @@ AST *appendBrotherAtLast(AST *leftNode, AST *tobeappend) {
 
 AST *newStrNode(char *va) {
 	AST *node;
-	node = newNode(ASTN_L_string);
+	node = newNode(ASTN_L_string,-1);
 	node -> value.str = va;
 	return node;
 }
 
 AST *newIntNode(int va) {
 	AST *node;
-	node = newNode(ASTN_L_int);
+	node = newNode(ASTN_L_int,-1);
 	node -> value.num = va;
 	return node;
 }
 
 AST *newBoolNode(BOOL va) {
 	AST *node;
-	node = newNode(ASTN_L_bool);
+	node = newNode(ASTN_L_bool,-1);
 	node -> value.b = va;
 	return node;
 }
 
 AST *newIdNode(char *va) {
 	AST *node;
-	node = newNode(ASTN_L_id);
+	node = newNode(ASTN_L_id,-1);
 	node -> value.str = va;
 	return node;
 }

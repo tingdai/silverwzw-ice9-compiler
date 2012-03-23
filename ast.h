@@ -3,7 +3,6 @@
 
 typedef enum {
 	ASTN_stms,
-	ASTN_dec,
 	ASTN_decs,
 	ASTN_stm,
 	ASTN_if,
@@ -11,7 +10,6 @@ typedef enum {
 	ASTN_do,
 	ASTN_fa,
 	ASTN_proc,
-	ASTN_dec1,
 	ASTN_dec1s,
 	ASTN_idlist,
 	ASTN_cids,
@@ -54,7 +52,7 @@ typedef struct _AST {
 } AST;
 AST ASTroot;
 
-AST *newNode(NodeType t);
+AST *newNode(NodeType t, int l);
 AST *appendChild(AST *parent, AST * child);
 AST *insertChild(AST *parent, AST * child);
 AST *appendBrother(AST *leftNode, AST *tobeappend);

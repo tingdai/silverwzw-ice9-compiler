@@ -37,3 +37,6 @@ remk:
 remkall:
 	make cleanest
 	make
+
+wc:
+	wc -lwc ice9.y ice9.l ast.h ast.c

@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "ast.h"
 #include "ice9.tab.h"
+
 int fileno(FILE *stream);
 char * iddmp(char * s) {
 	char *str;

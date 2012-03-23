@@ -21,8 +21,8 @@ typedef enum {
 	ASTN_forward,
 	ASTN_type,
 	ASTN_declistx,
+	ASTN_declist,
 	ASTN_lvalue,
-	ASTN_cexps,
 	ASTN_exp,
 	ASTN_program,
 	ASTN_L_break,
@@ -34,10 +34,26 @@ typedef enum {
 	ASTN_L_id,
 	ASTN_L_int,
 	ASTN_L_string,
-	ASTN_L_bool
+	ASTN_L_bool,
+	ASTN_typedes,
+	ASTN_read,
+	ASTN_umin,
+	ASTN_plus,
+	ASTN_minus,
+	ASTN_star,
+	ASTN_div,
+	ASTN_quest,
+	ASTN_mod,
+	ASTN_eq,
+	ASTN_neq,
+	ASTN_ge,
+	ASTN_le,
+	ASTN_lt,
+	ASTN_gt,
+	ASTN_proccall
 } NodeType;
 
-typedef int BOOL;
+typedef enum {TRUE, FALSE} BOOL;
 
 typedef struct _AST {
 	struct _AST *child;

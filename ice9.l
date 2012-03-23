@@ -74,29 +74,29 @@ string	(\"[^\"\n]*\")|(\'[^\'\n]*\')
 "false"		{return TK_FALSE;}
 "write"		{return TK_WRITE;}
 "writes"	{return TK_WRITES;}
-"read"		{return TK_READ;}
+"read"		{yylval.intt=yynewlines;return TK_READ;}
 "[]"		{yylval.intt=yynewlines;return TK_BOX;}
 "->"		{return TK_ARROW;}
 "("		{return TK_LBRACK;}
 ")"		{return TK_RBRACK;}
 "["		{return TK_LPAREN;}
 "]"		{return TK_RPAREN;}
-":"		{return TK_COLON;}
+":"		{yylval.intt=yynewlines;return TK_COLON;}
 ";"		{yylval.intt=yynewlines;return TK_SEMI;}
-"="		{return TK_EQ;}
+"="		{yylval.intt=yynewlines;return TK_EQ;}
 ":="		{return TK_ASSIGN;}
-"?"		{return TK_QUEST;}
+"?"		{yylval.intt=yynewlines;return TK_QUEST;}
 ","		{return TK_COMMA;}
-"+"		{return TK_PLUS;}
-"-"		{return TK_MINUS;}
-"*"		{return TK_STAR;}
-"/"		{return TK_SLASH;}
-"%"		{return TK_MOD;}
-"!="		{return TK_NEQ;}
-">"		{return TK_GT;}
-"<"		{return TK_LT;}
-">="		{return TK_GE;}
-"<="		{return TK_LE;}
+"+"		{yylval.intt=yynewlines;return TK_PLUS;}
+"-"		{yylval.intt=yynewlines;return TK_MINUS;}
+"*"		{yylval.intt=yynewlines;return TK_STAR;}
+"/"		{yylval.intt=yynewlines;return TK_SLASH;}
+"%"		{yylval.intt=yynewlines;return TK_MOD;}
+"!="		{yylval.intt=yynewlines;return TK_NEQ;}
+">"		{yylval.intt=yynewlines;return TK_GT;}
+"<"		{yylval.intt=yynewlines;return TK_LT;}
+">="		{yylval.intt=yynewlines;return TK_GE;}
+"<="		{yylval.intt=yynewlines;return TK_LE;}
 
 [0-9]+		{yylval.intt = atoi(yytext);return TK_INT;}
 {string}	{yylval.str = strdmp(yytext);return TK_SLIT;}

@@ -48,25 +48,25 @@ void yyerror(char *s)
 %token TK_FALSE
 %token TK_WRITE
 %token TK_WRITES
-%token TK_READ
+%token <intt> TK_READ
 %token <intt> TK_BOX
 %token TK_ARROW
 %token TK_LPAREN
 %token TK_RPAREN
 %token TK_LBRACK
 %token TK_RBRACK
-%token TK_COLON
+%token <intt> TK_COLON
 %token <intt> TK_SEMI
 %token TK_ASSIGN
 %token TK_COMMA
 
-%left TK_PLUS TK_MINUS
+%left <intt> TK_PLUS TK_MINUS
 
-%left TK_STAR TK_SLASH TK_MOD
+%left <intt> TK_STAR TK_SLASH TK_MOD
 
-%right TK_QUEST UMINUS
+%right <intt> TK_QUEST UMINUS
 
-%nonassoc TK_EQ TK_NEQ TK_GT TK_LT TK_GE TK_LE
+%nonassoc <intt> TK_EQ TK_NEQ TK_GT TK_LT TK_GE TK_LE
 
 %token <str> TK_SLIT
 %token <intt> TK_INT
@@ -444,12 +444,12 @@ NT_dec1s: NT_dec1
 
 NT_idlist: TK_ID 
 	{
-		$$ = newNode(ASTN_idlist, -1);
+		$$ = newNode(ASTN_idlist, yynewlines);
 		appendChild($$, newIdNode($1));
 	}
 	| TK_ID NT_cids
 	{
-		$$ = newNode(ASTN_idlist, -1);
+		$$ = newNode(ASTN_idlist, yynewlines);
 		appendChild($$, newIdNode($1));
 		appendChild($$, $2);
 	}
@@ -467,69 +467,250 @@ NT_cids:  TK_COMMA TK_ID
 	;
 
 NT_var:	  TK_VAR NT_varlists TK_SEMI 
+	{
+		$$ = newNode(ASTN_var, $1);
+		appendChild($$, $2);
+	}
       	;
 
 NT_varlist: NT_idlist TK_COLON TK_ID NT_dim
+	{
+		$$ = newNode(ASTN_varlist, $2);
+		appendChild($$, $1);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_typedes, $2), newIdNode($3)), $4));
+	}
 	| NT_idlist TK_COLON TK_ID
+	{
+		$$ = newNode(ASTN_varlist, $2);
+		appendChild($$, $1);
+		appendChild($$, appendChild(newNode(ASTN_typedes, $2), newIdNode($3)));
+	}
 	;
 
 NT_dim: TK_LPAREN TK_INT TK_RPAREN
+	{
+		$$ = newIntNode($2);
+	}
 	| NT_dim TK_LPAREN TK_INT TK_RPAREN
+	{
+		$$ = $1;
+		appendBrotherAtLast($$, newIntNode($3));
+	}
 	;
 
 NT_indexs: TK_LPAREN NT_exp TK_RPAREN
+	{
+		$$ = $2;
+	}
 	| NT_indexs TK_LPAREN NT_exp TK_RPAREN
+	{
+		$$ = $1;
+		appendBrotherAtLast($$, $3);
+	}
 	;
 
 NT_varlists: NT_varlist
+	{
+		$$ = $1;
+	}
 	| NT_varlists TK_COMMA NT_varlist
+	{
+		$$ = $1;
+		appendBrotherAtLast($$, $3);
+	}
 	;
 
 NT_forward: TK_FORWARD TK_ID TK_LBRACK NT_declistx TK_RBRACK TK_SEMI
+	{
+		$$ = newNode(ASTN_forward, $1);
+		appendChild($$, newIdNode($2));
+		appendChild($$, $4);
+	}
 	| TK_FORWARD TK_ID TK_LBRACK NT_declistx TK_RBRACK TK_COLON TK_ID TK_SEMI
+	{
+		$$ = newNode(ASTN_forward, $1);
+		appendChild($$, newIdNode($2));
+		appendChild($$, $4);
+		appendChild($$, newIdNode($7));
+	}
 	| TK_FORWARD TK_ID TK_LBRACK TK_RBRACK TK_SEMI
+	{
+		$$ = newNode(ASTN_forward, $1);
+		appendChild($$, newIdNode($2));
+	}
 	| TK_FORWARD TK_ID TK_LBRACK TK_RBRACK TK_COLON TK_ID TK_SEMI
+	{
+		$$ = newNode(ASTN_forward, $1);
+		appendChild($$, newIdNode($2));
+		appendChild($$, newIdNode($6));
+	}
 	;
 
 NT_type:  TK_TYPE TK_ID TK_EQ TK_ID NT_dim TK_SEMI
+	{
+		$$ = newNode(ASTN_type, $1);
+		appendChild($$, newIdNode($2));
+		appendChild($$, appendChild(appendChild(newNode(ASTN_typedes, -1), newIdNode($4)),$5));
+	}
 	| TK_TYPE TK_ID TK_EQ TK_ID TK_SEMI
+	{
+		$$ = newNode(ASTN_type, $1);
+		appendChild($$, newIdNode($2));
+		appendChild($$, appendChild(newNode(ASTN_typedes, -1), newIdNode($4)));
+	}
 	;
 
 NT_declistx: NT_idlist TK_COLON TK_ID
+	{
+		$$ = newNode(ASTN_declistx, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_declist, $2), $1), newIdNode($3)));
+	}
 	| NT_declistx TK_COMMA NT_idlist TK_COLON TK_ID
+	{
+		appendChild($1, appendChild(appendChild(newNode(ASTN_declist, $4), $3), newIdNode($5)));
+		$$ = $1;
+	}
 	;
 
 NT_lvalue: TK_ID
+	{
+		$$ = newNode(ASTN_lvalue, yynewlines);
+		appendChild($$, newIdNode($1));
+	}
 	| TK_ID NT_indexs
+	{
+		$$ = newNode(ASTN_lvalue, yynewlines);
+		appendChild($$, newIdNode($1));
+		appendChild($$, $2);
+	}
 	;
 
 NT_cexps: TK_COMMA NT_exp
+	{
+		$$ = $2;
+	}
 	| NT_cexps TK_COMMA NT_exp
+	{
+		$$ = $1;
+		appendBrotherAtLast($$, $3);
+	}
 	;
 
 NT_exp:	  NT_lvalue
+	{
+		$$ = newNode(ASTN_exp, $1 -> lineno);
+		appendChild($$, $1);
+	}
       	| TK_INT
+	{
+		$$ = newNode(ASTN_exp, yynewlines);
+		appendChild($$, newIntNode($1));
+	}
 	| TK_TRUE
+	{
+		$$ = newNode(ASTN_exp, yynewlines);
+		appendChild($$, newBoolNode(TRUE));
+	}
 	| TK_FALSE
+	{
+		$$ = newNode(ASTN_exp, yynewlines);
+		appendChild($$, newBoolNode(FALSE));
+	}
 	| TK_SLIT
+	{
+		$$ = newNode(ASTN_exp, yynewlines);
+		appendChild($$, newStrNode($1));
+	}
 	| TK_READ
+	{
+		$$ = newNode(ASTN_exp, $1);
+		appendChild($$, newNode(ASTN_read, $1));
+	}
 	| TK_MINUS NT_exp %prec UMINUS
+	{
+		$$ = newNode(ASTN_exp, $1);
+		appendChild($$, appendChild(newNode(ASTN_umin, $1), $2));
+	}
 	| TK_QUEST NT_exp
+	{
+		$$ = newNode(ASTN_exp, $1);
+		appendChild($$, appendChild(newNode(ASTN_quest, $1), $2));
+	}
 	| TK_ID TK_LBRACK TK_RBRACK
+	{
+		$$ = newNode(ASTN_exp, yynewlines);
+		appendChild($$, appendChild(newNode(ASTN_proccall, yynewlines),newIdNode($1)));
+	}
 	| TK_ID TK_LBRACK NT_exp NT_cexps TK_RBRACK
+	{
+		$$ = newNode(ASTN_exp, yynewlines);
+		appendBrother($3, $4);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_proccall, yynewlines),newIdNode($1)),$3));
+	}
 	| TK_ID TK_LBRACK NT_exp TK_RBRACK
+	{
+		$$ = newNode(ASTN_exp, yynewlines);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_proccall, yynewlines),newIdNode($1)),$3));
+	}
 	| NT_exp TK_PLUS NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_plus, $2), $1), $3));
+	}
 	| NT_exp TK_MINUS NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_minus, $2), $1), $3));
+	}
 	| NT_exp TK_STAR NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_star, $2), $1), $3));
+	}
 	| NT_exp TK_SLASH NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_div, $2), $1), $3));
+	}
 	| NT_exp TK_MOD NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_mod, $2), $1), $3));
+	}
 	| NT_exp TK_EQ NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_eq, $2), $1), $3));
+	}
 	| NT_exp TK_NEQ NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_neq, $2), $1), $3));
+	}
 	| NT_exp TK_GT NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_gt, $2), $1), $3));
+	}
 	| NT_exp TK_LT NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_lt, $2), $1), $3));
+	}
 	| NT_exp TK_GE NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_ge, $2), $1), $3));
+	}
 	| NT_exp TK_LE NT_exp
+	{
+		$$ = newNode(ASTN_exp, $2);
+		appendChild($$, appendChild(appendChild(newNode(ASTN_le, $2), $1), $3));
+	}
 	| TK_LBRACK NT_exp TK_RBRACK
+	{
+		$$ = $2;
+	}
 	;
 
 %%

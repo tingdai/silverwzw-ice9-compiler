@@ -1,8 +1,6 @@
 %{
-extern "C" {
-	#include <stdio.h>
-	#include <stdlib.h>
-}
+#include <stdio.h>
+#include <stdlib.h>
 #include "ast.h"
 #define YYDEBUG 1
 extern int yynewlines;
@@ -715,11 +713,6 @@ NT_exp:	  NT_lvalue
 
 %%
 
-int main(int argc, char **argv) {
-	if (argc>1)
-		yydebug=1;
-	else
-		yydebug=0;
-	yyparse();
-	return 0;
+int parse() {
+	return yyparse();
 }

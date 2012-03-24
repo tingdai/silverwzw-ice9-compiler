@@ -1,7 +1,5 @@
-extern "C" {
 #include <stdlib.h>
 #include <assert.h>
-}
 
 #include "ast.h"
 extern int yynewlines;

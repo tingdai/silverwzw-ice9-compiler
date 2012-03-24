@@ -66,7 +66,6 @@ typedef struct _AST {
 		BOOL b;
 	} value;
 } AST;
-AST ASTroot;
 
 AST *newNode(NodeType t, int l);
 AST *appendChild(AST *parent, AST * child);

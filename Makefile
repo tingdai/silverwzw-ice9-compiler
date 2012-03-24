@@ -3,7 +3,7 @@ CFLAGS	= -g -Wall -pedantic -std=c99
 LIB	= -lfl
 SRC	= ice9.l ice9.y
 
-ice9:	ice9.yy.o ice9.tab.o ast.o semantic.o
+ice9:	ice9.yy.o ice9.tab.o ast.o semantic.o main.o
 	g++ -o $@ $^ $(LIB)
 
 ice9.tab.c: ice9.y
@@ -27,6 +27,9 @@ ast.o: ast.c ast.h
 semantic.o: semantic.cpp semantic.h parse.h
 	g++ -g -c $<
 
+main.o: main.cpp semantic.h
+	g++ -g -c $<
+
 clean:
 	rm -f *.o ice9.output
 
@@ -41,4 +44,4 @@ remkall:
 	make cleanest
 	make
 wc:
-	wc -lwc ice9.y ice9.l ast.h ast.c
+	wc -lwc ice9.y ice9.l ast.h ast.c *.cpp semantic.h parse.h

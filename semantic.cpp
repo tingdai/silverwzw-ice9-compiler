@@ -1,10 +1,11 @@
+#include "semantic.h"
 extern "C" {
-#include "ast.h"
 #include "ice9.tab.h"
 #include "parse.h"
 }
 
-int main() {
-	parse();
+bool SemanticNode::isfree = false;
+
+int semanticCheck2() {
 	return 0;
 }

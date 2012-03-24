@@ -6,7 +6,7 @@ Spring 2012
 
 Author: Zhuowei Wang
 
-Please do not copy my code, if you're also taking this course.
+Please do not copy my code, if you're also taking similar course.
 
 ## License
 GNU LGPL v3.0

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "ast.h"
+#include "parse.h"
 #define YYDEBUG 1
 extern int yynewlines;
 extern char *yytext;

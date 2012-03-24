@@ -13,6 +13,7 @@ char * iddmp(char * s) {
 		;
 	}
 	str = malloc(i + 1);
+	i = 0;
 	while (*(s + i) != '\0') {
 		*(str + i) = *(s + i);
 		i++;
@@ -29,6 +30,7 @@ char * strdmp(char * s) {
 		;
 	}
 	str = malloc(i);
+	i = 0;
 	while (*(s + i) != '\0') {
 		*(str + i) = *(s + i);
 		i++;

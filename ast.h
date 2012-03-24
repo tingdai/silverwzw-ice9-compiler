@@ -59,7 +59,7 @@ typedef struct _AST {
 	struct _AST *child;
 	struct _AST *brother;
 	NodeType sym;
-	unsigned lineno;
+	long lineno;
 	union {
 		char *str;
 		int num;

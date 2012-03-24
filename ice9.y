@@ -468,8 +468,7 @@ NT_cids:  TK_COMMA TK_ID
 
 NT_var:	  TK_VAR NT_varlists TK_SEMI 
 	{
-		$$ = newNode(ASTN_var, $1);
-		appendChild($$, $2);
+		$$ = $2;
 	}
       	;
 

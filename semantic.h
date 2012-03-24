@@ -16,6 +16,7 @@ public:
 	bool isFree();
 	bool isNull();
 	unsigned getChildCount();
+	unsigned getChildCount(NodeType tp);
 	SemanticNode getChild(unsigned i);
 	SemanticNode getChildByType(NodeType t, unsigned i);
 };
@@ -99,5 +100,4 @@ public:
 };
 
 int semanticCheck(SemanticTree tree);
-int semanticCheck2();
 #endif

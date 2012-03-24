@@ -1,7 +1,9 @@
 %{
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+extern "C" {
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <assert.h>
+}
 #include "ast.h"
 #include "ice9.tab.h"
 

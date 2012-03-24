@@ -1,7 +1,9 @@
+extern "C" {
 #include <stdlib.h>
 #include <assert.h>
-#include "ast.h"
+}
 
+#include "ast.h"
 extern int yynewlines;
 
 AST *newNode(NodeType t, int l) {

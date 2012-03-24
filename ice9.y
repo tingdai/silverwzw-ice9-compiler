@@ -1,7 +1,8 @@
 %{
-
-#include <stdio.h>
-#include <stdlib.h>
+extern "C" {
+	#include <stdio.h>
+	#include <stdlib.h>
+}
 #include "ast.h"
 #define YYDEBUG 1
 extern int yynewlines;

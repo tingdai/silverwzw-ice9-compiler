@@ -15,6 +15,11 @@ public:
 	NodeType type();
 	bool isFree();
 	bool isNull();
+	long line();
+	char *idValue();
+	char *strValue();
+	bool boolValue();
+	int intValue();
 	unsigned getChildCount();
 	unsigned getChildCount(NodeType tp);
 	SemanticNode getChild(unsigned i);
@@ -42,7 +47,7 @@ class Ice9Proc {
 private:
 	char *name;
 	struct _procArgTab {
-		Ice9Type procArgs;
+		Ice9Type procArgType;
 		_procArgTab *next;
 	} *procArgs;
 	struct _procReturn {
@@ -51,10 +56,11 @@ private:
 	} procReturn;
 	SemanticNode declarNode;
 	SemanticNode defineNode;
-	Ice9Proc(char * name);
+	Ice9Proc(char * s);
 public:
 	~Ice9Proc();
-	void addArgs(Ice9Type arg);
+	void addArg(Ice9Type arg);
+	void setReturn(Ice9Type arg);
 	Ice9Type getArg(unsigned i);
 	unsigned argCount();
 	SemanticNode declar();
@@ -65,7 +71,6 @@ public:
 	friend class ProcTab;
 };
 
-
 class ProcTab {
 private:
 	struct _procTab {
@@ -75,8 +80,10 @@ private:
 public:
 	ProcTab();
 	~ProcTab();
-	Ice9Proc &newProc(char *name);
-	bool isConflict(char *name);
+	Ice9Proc *ProcessProcAndForwardNode(SemanticNode nd);
+	void ProcessProccallNode(SemanticNode nd);
+	Ice9Proc *getProc(char *name);
+	bool exist(char *name);
 };
 
 class VarTypeTab {
@@ -90,14 +97,15 @@ private:
 		char *name;
 		_typeTab *next;
 	} *tab;
+	bool isConflict(char *s, SemanticNode visibleNode);
 public:
 	VarTypeTab();
 	~VarTypeTab();
-	bool isConflict(char *s);
-	void push(char *s, Ice9Type tp, SemanticNode node);
+	void push(char *s, Ice9Type tp, SemanticNode node, long line);
 	void popCorresponding(SemanticNode leaving);
-	bool check(char *s, Ice9Type tp);
+	Ice9Type getType(char *s);
 };
 
 int semanticCheck(SemanticTree tree);
+Ice9Type getType(SemanticNode nd);
 #endif

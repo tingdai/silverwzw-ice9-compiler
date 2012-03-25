@@ -26,7 +26,7 @@ ast.o: ast.c ast.h
 	gcc $(DEBUG) $(CFLAGS) -c $<
 
 semantic.o: semantic.cpp semantic.h parse.h
-	g++ $(DEBUG)  -c $<
+	g++ $(DEBUG) -c $<
 
 main.o: main.cpp semantic.h
 	g++ $(DEBUG) -c $<

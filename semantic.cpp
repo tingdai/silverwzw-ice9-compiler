@@ -10,6 +10,10 @@ extern "C" {
 }
 #include <new>
 
+const Ice9Type INT={ice9int,0}; 
+const Ice9Type BOOLEAN={ice9bool,0}; 
+const Ice9Type STR={ice9str,0}; 
+
 bool SemanticNode::isfree = false;
 VarTypeTab typeTab(TYPE_TABLE) ,varTab(VAR_TABLE);
 ProcTab procTab;
@@ -802,20 +806,10 @@ public:
 	Ice9Type getType(char *s, long line);
 };
 */
-int semanticCheck(SemanticTree tr) {
-	current_scope = *(SemanticNode *)&tr;
-	return 0;
-}
 
 Ice9Type getTypeGeneral(SemanticNode nd) {
-	Ice9Type r,INT,BOOL,STR,r1,r2;
-	unsigned i,d;
-	INT.dim = 0;
-	INT.base = ice9int;
-	STR.dim = 0;
-	STR.base = ice9str;
-	BOOL.dim = 0;
-	BOOL.base = ice9bool;
+	Ice9Type r,r1,r2;
+	unsigned d,i;
 #define OPTION_A 1
 	switch(nd.type()) {
 	case ASTN_exp:
@@ -839,7 +833,7 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 #endif
 		return typeTab.getType(nd.idValue(),nd.line());
 	case ASTN_L_bool:
-		return BOOL;
+		return BOOLEAN;
 	case ASTN_lvalue:
 		Ice9Type lvalueIdType;
 		lvalueIdType = varTab.getType(nd.getChild(ASTN_L_id, 0).idValue(), nd.line());
@@ -860,7 +854,7 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		d = nd.getChildCount(ASTN_exp);
 		assert(d == 1);	
 		r = getTypeGeneral(nd.getChild(ASTN_exp, 0));
-		if (r != INT && r != BOOL) {
+		if (r != INT && r != BOOLEAN) {
 			semanticError("unary minus only accept int and bool", nd.line());
 		}
 		return r;
@@ -869,10 +863,10 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		assert(d == 2);	
 		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
 		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
-		if (r1 != BOOL && r1 != INT) {
+		if (r1 != BOOLEAN && r1 != INT) {
 			semanticError("Plus operator only accept bool or int", nd.line());
 		}
-		if (r2 != BOOL && r2 != INT) {
+		if (r2 != BOOLEAN && r2 != INT) {
 			semanticError("Plus operator only accept bool or int", nd.line());
 		}
 		if(r1 != r2) {
@@ -889,7 +883,7 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		}
 		return INT;
 	case ASTN_quest:
-		if(getTypeGeneral(nd.getChild(ASTN_exp, 0)) != BOOL) {
+		if(getTypeGeneral(nd.getChild(ASTN_exp, 0)) != BOOLEAN) {
 			 semanticError("Quest operator only accept bool", nd.line());
 		}
 		return INT;
@@ -901,10 +895,10 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		assert(d == 2);	
 		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
 		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
-		if (r1 != BOOL && r1 != INT) {
+		if (r1 != BOOLEAN && r1 != INT) {
 			semanticError("Star operator only accept bool or int", nd.line());
 		}
-		if (r2 != BOOL && r2 != INT) {
+		if (r2 != BOOLEAN && r2 != INT) {
 			semanticError("Star operator only accept bool or int", nd.line());
 		}
 		if(r1 != r2) {
@@ -934,16 +928,16 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		assert(d == 2);	
 		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
 		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
-		if (r1 != BOOL && r1 != INT) {
+		if (r1 != BOOLEAN && r1 != INT) {
 			semanticError("Equal/Not-equal operator only accept bool or int", nd.line());
 		}
-		if (r2 != BOOL && r2 != INT) {
+		if (r2 != BOOLEAN && r2 != INT) {
 			semanticError("Equal/Not-equal operator only accept bool or int", nd.line());
 		}
 		if(r1 != r2) {
 			semanticError("Equal/Not-equal operator: RHS and LHS type not match", nd.line());
 		}
-		return BOOL;
+		return BOOLEAN;
 	case ASTN_gt:
 	case ASTN_lt:
 	case ASTN_ge:
@@ -955,9 +949,65 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		if (r2 != INT || r1 != INT) {
 			semanticError("Comparison operators: < > <= >= only accept int", nd.line());
 		}
-		return BOOL;
+		return BOOLEAN;
 	default:
 		assert(false);
 	}
 	return r;//dummy return
+}
+
+void nodeCheckIn(SemanticNode nd) {
+	NodeType ndtp;
+	ndtp = nd.type();
+	if (ndtp == ASTN_proc) {
+		current_scope = nd;
+	}
+	switch(ndtp) {
+	case ASTN_forward:
+	case ASTN_stm: // only for stm -> exp ';'
+	case ASTN_proc:
+	case ASTN_L_break:
+	case ASTN_fa:
+	case ASTN_assign:
+	case ASTN_write: //merge this two
+	case ASTN_writes: //merge this two
+	case ASTN_var:
+	case ASTN_type:
+	case ASTN_if:
+	default:
+		break;
+	}
+	return;
+}
+
+void nodeCheckOut(SemanticNode nd) {
+	switch(nd.type()) {
+	case ASTN_proc:
+		{
+		SemanticTree tr;
+		current_scope = *(SemanticNode *)&tr;
+		}
+		// no break here!
+	case ASTN_fa:
+		varTab.popCorresponding(nd);
+		typeTab.popCorresponding(nd);
+		break;
+	}
+	return;
+}
+
+void travNode(SemanticNode nd) {
+	nodeCheckIn(nd);
+	SemanticNode x;
+	x.data = nd.data -> child;
+	travNode(x);
+	x.data = nd.data -> brother;
+	travNode(x);
+	nodeCheckOut(nd);
+}
+
+int semanticCheck(SemanticTree tr) {
+	current_scope = *(SemanticNode *)&tr;
+	travNode(current_scope);
+	return 0;
 }

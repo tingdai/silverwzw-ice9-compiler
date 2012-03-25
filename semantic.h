@@ -25,7 +25,9 @@ public:
 	unsigned getChildCount(NodeType tp);
 	SemanticNode getChild(unsigned i);
 	SemanticNode getChild(NodeType t, unsigned i);
+	friend void travNode(SemanticNode nd);
 };
+void travNode(SemanticNode nd);
 
 class SemanticTree : public SemanticNode {
 public:

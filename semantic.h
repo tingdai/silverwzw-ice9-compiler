@@ -35,6 +35,7 @@ public:
 
 enum Ice9BaseType {
 	ice9int,
+	ice9void,
 	ice9str,
 	ice9bool
 };
@@ -67,6 +68,7 @@ public:
 	~Ice9Proc();
 	void addArg(Ice9Type arg);
 	void setReturn(Ice9Type arg);
+	Ice9Type getReturnType();
 	Ice9Type getArg(unsigned i);
 	unsigned argCount();
 	SemanticNode declar();

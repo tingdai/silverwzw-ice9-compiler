@@ -214,7 +214,7 @@ char *strdmp(char * s) {
 Ice9Proc::Ice9Proc(char * s) {
 	name = strdmp(s);
 	procArgs = NULL;
-	procReturn.type.base = ice9int;
+	procReturn.type.base = ice9void;
 	procReturn.type.dim = 0;
 	procReturn.isvoid = true;
 }
@@ -266,6 +266,10 @@ Ice9Type Ice9Proc::getArg(unsigned i) {
 	}
 
 	return ptr -> procArgType;
+}
+
+Ice9Type Ice9Proc::getReturnType() {
+	return procReturn.type;
 }
 
 unsigned Ice9Proc::argCount() {
@@ -627,6 +631,17 @@ char * namedmp(char * s) {
 VarTypeTab::VarTypeTab(_tabType t) {
 	tabType = t;
 	tab = NULL;
+	if (tabType == TYPE_TABLE) {
+		SemanticTree smtree;
+		Ice9Type ice9type;
+		ice9type.base = ice9int;
+		ice9type.dim = 0;
+		push("int",ice9type,smtree,-1);
+		ice9type.base = ice9str;
+		push("string",ice9type,smtree,-1);
+		ice9type.base = ice9bool;
+		push("bool",ice9type,smtree,-1);
+	}
 }
 
 VarTypeTab::~VarTypeTab() {
@@ -791,7 +806,158 @@ int semanticCheck(SemanticTree tr) {
 	current_scope = *(SemanticNode *)&tr;
 	return 0;
 }
+
 Ice9Type getTypeGeneral(SemanticNode nd) {
-	Ice9Type r;
-	return r;
+	Ice9Type r,INT,BOOL,STR,r1,r2;
+	unsigned i,d;
+	INT.dim = 0;
+	INT.base = ice9int;
+	STR.dim = 0;
+	STR.base = ice9str;
+	BOOL.dim = 0;
+	BOOL.base = ice9bool;
+#define OPTION_A 1
+	switch(nd.type()) {
+	case ASTN_exp:
+		assert(nd.getChildCount() == 1);
+#ifdef OPTION_A
+		if (nd.getChild(0).type() == ASTN_L_id) {
+			return typeTab.getType(nd.getChild(0).idValue(), nd.line());
+		}
+#endif
+		return getTypeGeneral(nd.getChild(0));
+	case ASTN_L_int:
+		return INT;
+	case ASTN_L_string:
+		return STR;
+	case ASTN_L_id:
+#ifndef OPTION_A
+		assert(false); 
+		//special case, should be handled with parent ASTN_exp node.
+		//so as to show error msg correctly
+		//see case ASTN_exp branch.
+#endif
+		return typeTab.getType(nd.idValue(),nd.line());
+	case ASTN_L_bool:
+		return BOOL;
+	case ASTN_lvalue:
+		Ice9Type lvalueIdType;
+		lvalueIdType = varTab.getType(nd.getChild(ASTN_L_id, 0).idValue(), nd.line());
+		d = nd.getChildCount(ASTN_exp);
+		if (lvalueIdType.dim < d) {
+			semanticError("Too many subscript for the array", nd.line());
+		}
+		for(i = 0; i < d; i++) {
+			if(getTypeGeneral(nd.getChild(ASTN_exp, i)) != INT) {
+				semanticError("Subscript must be integer", nd.line());
+			}
+		}
+		lvalueIdType.dim -= d;
+		return lvalueIdType;
+	case ASTN_read:
+		return INT;
+	case ASTN_umin:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 1);	
+		r = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		if (r != INT && r != BOOL) {
+			semanticError("unary minus only accept int and bool", nd.line());
+		}
+		return r;
+	case ASTN_plus:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 2);	
+		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
+		if (r1 != BOOL && r1 != INT) {
+			semanticError("Plus operator only accept bool or int", nd.line());
+		}
+		if (r2 != BOOL && r2 != INT) {
+			semanticError("Plus operator only accept bool or int", nd.line());
+		}
+		if(r1 != r2) {
+			semanticError("Plus operator: RHS and LHS type not match", nd.line());
+		}
+		return r1;
+	case ASTN_minus:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 2);	
+		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
+		if (r2 != INT || r1 != INT) {
+			semanticError("Minus operator only accept int", nd.line());
+		}
+		return INT;
+	case ASTN_quest:
+		if(getTypeGeneral(nd.getChild(ASTN_exp, 0)) != BOOL) {
+			 semanticError("Quest operator only accept bool", nd.line());
+		}
+		return INT;
+	case ASTN_proccall:
+		procTab.ProcessProccallNode(nd);
+		return procTab.getProc(nd.getChild(ASTN_L_id, 0).idValue()) -> getReturnType();
+	case ASTN_star:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 2);	
+		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
+		if (r1 != BOOL && r1 != INT) {
+			semanticError("Star operator only accept bool or int", nd.line());
+		}
+		if (r2 != BOOL && r2 != INT) {
+			semanticError("Star operator only accept bool or int", nd.line());
+		}
+		if(r1 != r2) {
+			semanticError("Star operator: RHS and LHS type not match", nd.line());
+		}
+	case ASTN_div:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 2);	
+		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
+		if (r2 != INT || r1 != INT) {
+			semanticError("Minus operator only accept int", nd.line());
+		}
+		return INT;
+	case ASTN_mod:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 2);	
+		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
+		if (r2 != INT || r1 != INT) {
+			semanticError("Mod operator only accept int", nd.line());
+		}
+		return INT;
+	case ASTN_eq:
+	case ASTN_neq:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 2);	
+		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
+		if (r1 != BOOL && r1 != INT) {
+			semanticError("Equal/Not-equal operator only accept bool or int", nd.line());
+		}
+		if (r2 != BOOL && r2 != INT) {
+			semanticError("Equal/Not-equal operator only accept bool or int", nd.line());
+		}
+		if(r1 != r2) {
+			semanticError("Equal/Not-equal operator: RHS and LHS type not match", nd.line());
+		}
+		return BOOL;
+	case ASTN_gt:
+	case ASTN_lt:
+	case ASTN_ge:
+	case ASTN_le:
+		d = nd.getChildCount(ASTN_exp);
+		assert(d == 2);	
+		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
+		if (r2 != INT || r1 != INT) {
+			semanticError("Comparison operators: < > <= >= only accept int", nd.line());
+		}
+		return BOOL;
+	default:
+		assert(false);
+	}
+	return r;//dummy return
 }

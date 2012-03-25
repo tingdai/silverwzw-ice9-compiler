@@ -14,16 +14,16 @@ ice9.tab.h: ice9.y
 	bison -d -o ice9.tab.c $<
 
 ice9.tab.o: ice9.tab.c ast.h
-	gcc $(CFLAGS) -c $<
+	gcc $(DEBUG) $(CFLAGS) -c $<
 
 ice9.yy.c: ice9.l ice9.tab.h
 	flex -o$@ $<
 
 ice9.yy.o: ice9.yy.c ast.h
-	gcc $(CFLAGS) -c $<
+	gcc $(DEBUG) $(CFLAGS) -c $<
 
 ast.o: ast.c ast.h
-	gcc $(CFLAGS) -c $<
+	gcc $(DEBUG) $(CFLAGS) -c $<
 
 semantic.o: semantic.cpp semantic.h parse.h
 	g++ $(DEBUG)  -c $<
@@ -43,6 +43,5 @@ remk:
 debug:
 	make cleanest
 	make DEBUG=-g
-
 wc:
 	wc -lwc ice9.y ice9.l ast.h ast.c *.cpp semantic.h parse.h

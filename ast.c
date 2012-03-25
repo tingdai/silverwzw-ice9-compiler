@@ -55,28 +55,28 @@ AST *appendBrotherAtLast(AST *leftNode, AST *tobeappend) {
 
 AST *newStrNode(char *va) {
 	AST *node;
-	node = newNode(ASTN_L_string,-1);
+	node = newNode(ASTN_L_string,yynewlines);
 	node -> value.str = va;
 	return node;
 }
 
 AST *newIntNode(int va) {
 	AST *node;
-	node = newNode(ASTN_L_int,-1);
+	node = newNode(ASTN_L_int,yynewlines);
 	node -> value.num = va;
 	return node;
 }
 
 AST *newBoolNode(BOOL va) {
 	AST *node;
-	node = newNode(ASTN_L_bool,-1);
+	node = newNode(ASTN_L_bool,yynewlines);
 	node -> value.b = va;
 	return node;
 }
 
 AST *newIdNode(char *va) {
 	AST *node;
-	node = newNode(ASTN_L_id,-1);
+	node = newNode(ASTN_L_id,yynewlines);
 	node -> value.str = va;
 	return node;
 }

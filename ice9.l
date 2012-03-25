@@ -7,6 +7,7 @@
 
 int fileno(FILE *stream);
 char * iddmp(char * s) {
+	// has hard copy @ semantic.cpp
 	char *str;
 	unsigned i;
 	for (i = 0; *(s + i) != '\0'; i++) {
@@ -21,7 +22,7 @@ char * iddmp(char * s) {
 	*(str + i) = '\0';
 	return str;
 }
-char * strdmp(char * s) {
+char * strdmp(char * s) {  
 	char *str;
 	unsigned i;
 	assert(*s == '\'' || *s == '"');

@@ -11,6 +11,7 @@ protected:
 	AST *data;
 	SemanticNode(AST *d);
 public:
+	bool eq(SemanticNode sn2);
 	SemanticNode();
 	NodeType type();
 	bool isFree();
@@ -23,7 +24,7 @@ public:
 	unsigned getChildCount();
 	unsigned getChildCount(NodeType tp);
 	SemanticNode getChild(unsigned i);
-	SemanticNode getChildByType(NodeType t, unsigned i);
+	SemanticNode getChild(NodeType t, unsigned i);
 };
 
 class SemanticTree : public SemanticNode {
@@ -42,6 +43,11 @@ struct Ice9Type {
 	Ice9BaseType base;
 	unsigned dim;
 };
+
+bool operator==(Ice9Type t1, Ice9Type t2);
+bool operator!=(Ice9Type t1, Ice9Type t2);
+bool operator==(SemanticNode sn1, SemanticNode sn2);
+bool operator!=(SemanticNode sn1, SemanticNode sn2);
 
 class Ice9Proc {
 private:
@@ -69,14 +75,20 @@ public:
 	void setDefine(SemanticNode n);
 	bool typeEq(SemanticNode n);
 	friend class ProcTab;
+	friend class _procTab;
 };
+
+class _procTab {
+public:
+	_procTab(char *s);
+	Ice9Proc proc;
+	_procTab *next;
+};
+
 
 class ProcTab {
 private:
-	struct _procTab {
-		Ice9Proc proc;
-		_procTab *next;
-	} *tab;
+	_procTab *tab;
 public:
 	ProcTab();
 	~ProcTab();
@@ -86,26 +98,35 @@ public:
 	bool exist(char *name);
 };
 
+enum _tabType{
+	VAR_TABLE,
+	TYPE_TABLE
+};
+
+struct _visibleStack {
+	Ice9Type type;
+	_visibleStack *next;
+	SemanticNode visibleWithin;
+};
+
+struct _typeTab {
+	_visibleStack visibleStack;
+	char *name;
+	_typeTab *next;
+};
+
 class VarTypeTab {
 private:
-	struct _typeTab {
-		struct _visibleStack {
-			Ice9Type type;
-			_visibleStack *next;
-			SemanticNode visibleWithin;
-		} visibleStack;
-		char *name;
-		_typeTab *next;
-	} *tab;
-	bool isConflict(char *s, SemanticNode visibleNode);
+	_typeTab *tab;
+	_tabType tabType;
 public:
-	VarTypeTab();
+	VarTypeTab(_tabType t);
 	~VarTypeTab();
 	void push(char *s, Ice9Type tp, SemanticNode node, long line);
 	void popCorresponding(SemanticNode leaving);
-	Ice9Type getType(char *s);
+	Ice9Type getType(char *s, long line);
 };
 
 int semanticCheck(SemanticTree tree);
-Ice9Type getType(SemanticNode nd);
+Ice9Type getTypeGeneral(SemanticNode nd);
 #endif

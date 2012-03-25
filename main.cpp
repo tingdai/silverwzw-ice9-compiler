@@ -1,5 +1,7 @@
 #include "semantic.h"
 int main() {
-	semanticCheck2();
+	SemanticTree semanticTree;
+	semanticCheck(semanticTree);
+	semanticTree.freeTree();
 	return 0;
 }

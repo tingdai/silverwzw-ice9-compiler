@@ -1,22 +1,32 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include "semantic.h"
 extern "C" {
 #include "ice9.tab.h"
 #include "parse.h"
+#include "ast.h"
 }
 #include <new>
 
 bool SemanticNode::isfree = false;
-VarTypeTab typeTab,varTab;
+VarTypeTab typeTab(TYPE_TABLE) ,varTab(VAR_TABLE);
 ProcTab procTab;
 unsigned loop_counter = 0;
 SemanticNode current_scope;
 
+bool operator==(Ice9Type t1, Ice9Type t2) {
+	return (t1.dim == t2.dim && t1.base == t2.base);
+}
+
+bool operator!=(Ice9Type t1, Ice9Type t2) {
+	return !(t1 == t2);
+}
+
 void semanticError(char *errmsg, int lineno) {
 	std::cerr << "line " << lineno << ':' << errmsg << std::endl;
-	exit(1)
+	exit(1);
 }
 
 SemanticNode::SemanticNode(AST *d) {
@@ -27,7 +37,7 @@ SemanticNode::SemanticNode() {
 	data = NULL;
 }
 
-Nodetype SemanticNode::type() {
+NodeType SemanticNode::type() {
 	assert(isfree == false);
 	return data -> sym;
 }
@@ -87,7 +97,7 @@ SemanticNode SemanticNode::getChild(unsigned i) {
 	return r;
 }
 
-SemanticNode SemanticNode::getChildByType(NodeType tp, unsigned i) {
+SemanticNode SemanticNode::getChild(NodeType tp, unsigned i) {
 	assert(isfree == false && data != NULL && data -> child != NULL);
 	unsigned j = 0;
 	AST *ptr;
@@ -148,7 +158,7 @@ public:
 	unsigned getChildCount();
 	unsigned getChildCount(NodeType tp);
 	SemanticNode getChild(unsigned i);
-	SemanticNode getChildByType(NodeType t, unsigned i);
+	SemanticNode getChild(NodeType t, unsigned i);
 };
 */
 SemanticTree::SemanticTree() : SemanticNode(&ASTroot) {
@@ -209,7 +219,7 @@ Ice9Proc::Ice9Proc(char * s) {
 	procReturn.isvoid = true;
 }
 
-Ice9Proc::~Ice9Proc(char * s) {
+Ice9Proc::~Ice9Proc() {
 	_procArgTab *tmp;
 	if (name != NULL) {
 		delete []name;
@@ -247,7 +257,7 @@ void Ice9Proc::setReturn(Ice9Type arg) {
 
 Ice9Type Ice9Proc::getArg(unsigned i) {
 	unsigned j = 0;
-	_procReturn *ptr;
+	_procArgTab *ptr;
 	ptr = procArgs;
 
 	for (j = 0; j < i; j++) {
@@ -260,7 +270,7 @@ Ice9Type Ice9Proc::getArg(unsigned i) {
 
 unsigned Ice9Proc::argCount() {
 	unsigned j = 0;
-	_procReturn *ptr;
+	_procArgTab *ptr;
 	ptr = procArgs;
 
 	while(ptr != NULL) {
@@ -298,7 +308,7 @@ bool Ice9Proc::typeEq(SemanticNode n) {
 			return false;
 		}
 		if (n.getChildCount(ASTN_L_id) == 2) { // has return type
-			if (typeTab.getType(n.getChild(ASTN_L_id, 1).idValue()) != procReturn.type) {
+			if (typeTab.getType(n.getChild(ASTN_L_id, 1).idValue(), n.line()) != procReturn.type) {
 				return false;
 			}
 		}
@@ -310,17 +320,17 @@ bool Ice9Proc::typeEq(SemanticNode n) {
 			SemanticNode N_declistx;
 			unsigned i = 0, j,k,argCountByDec;
 			argCountByDec = argCount();
-			N_declistx = n.getChildByType(ASTN_declistx, 0);
+			N_declistx = n.getChild(ASTN_declistx, 0);
 			j = N_declistx.getChildCount(ASTN_declist);
 			for ( k = 0; k < j; k++) {
 				unsigned ids, l;
 				Ice9Type declistType;
 				SemanticNode N_declist;
 
-				N_declist = tmpnd.getChild(ASTN_declist, k);
+				N_declist = N_declistx.getChild(ASTN_declist, k);
 
-				declistType = typeTab.getType(N_declist.getChild(ASTN_L_id).idValue());
-				ids = N_declist.getChildCount(ASTN_idlist).getChildCount(ASTN_L_id);
+				declistType = typeTab.getType(N_declist.getChild(ASTN_L_id).idValue(), N_declist.line());
+				ids = N_declist.getChild(ASTN_idlist, 0).getChildCount(ASTN_L_id);
 
 				for (l = 0; l < ids; l++){
 					if ( j == argCountByDec) {
@@ -391,11 +401,11 @@ struct Ice9Type {
 };
 */
 
-ProcTab::procTab() {
+ProcTab::ProcTab() {
 	tab = NULL;
 }
 
-ProcTab::~procTab() {
+ProcTab::~ProcTab() {
 	_procTab *ptr;
 	while( tab != NULL) {
 		ptr = tab;
@@ -407,7 +417,11 @@ ProcTab::~procTab() {
 	}
 }
 
-Ice9Proc &ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
+_procTab::_procTab(char *s) : proc(s) {
+	next = NULL;
+}
+
+Ice9Proc *ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 	NodeType ndtp;
 	char *procName;
 
@@ -445,7 +459,7 @@ Ice9Proc &ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 					N_declist = N_declistx.getChild(ASTN_declist, i);
 					N_idlist = N_declist.getChild(ASTN_idlist,0);
 					Ice9Type currentType;
-					currentType = typeTab.getType(N_declist.getChild(ASTN_L_id, 0).idValue());
+					currentType = typeTab.getType(N_declist.getChild(ASTN_L_id, 0).idValue(), N_declist.line());
 					unsigned j, num_id;
 					num_id = N_idlist.getChildCount(ASTN_L_id);
 					for (j = 0; j < num_id; j++) {
@@ -458,24 +472,27 @@ Ice9Proc &ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 		}
 		return theProc;
 	}
-	Ice9Proc *newProc;
+	_procTab *newProcTab;
 	if (tab == NULL) {
-		tab = new Ice9Proc(procName);
-		newProc = tab;
+		tab = new _procTab(procName);
+		newProcTab = tab;
 	}
 	else {
-		newProc = tab;
-		while(newProc -> next != NULL) {
-			newProc = newProc -> next;
+		newProcTab = tab;
+		while(newProcTab -> next != NULL) {
+			newProcTab = newProcTab -> next;
 		}
-		newProc -> next = new Ice9Proc(procName);
-		newProc = newProc -> next;
+		newProcTab -> next = new _procTab(procName);
+		newProcTab = newProcTab -> next;
+		newProcTab -> next = NULL;
 	}
+	Ice9Proc *newProc;
+	newProc = &(newProcTab -> proc);
 	switch(ndtp) {
 	case ASTN_forward:
 		newProc -> setDeclar(nd);
 		if (nd.getChildCount(ASTN_L_id) > 1) {
-			newProc -> setReturn(typeTab.getType(nd.getChild(ASTN_L_id, 1).idValue()));
+			newProc -> setReturn(typeTab.getType(nd.getChild(ASTN_L_id, 1).idValue(),nd.line()));
 			if (newProc -> procReturn.type.dim != 0) {
 				semanticError("procedure cannot return an array!",nd.line());
 			}
@@ -489,7 +506,7 @@ Ice9Proc &ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 				SemanticNode N_declist;
 				N_declist = N_declistx.getChild(ASTN_declist, current_declist);
 				Ice9Type currentType;
-				currentType = typeTab.getType(N_declist.getChild(ASTN_L_id, 0).idValue());
+				currentType = typeTab.getType(N_declist.getChild(ASTN_L_id, 0).idValue(), N_declist.line());
 				unsigned counter, num_idlist;
 				num_idlist = N_declist.getChild(ASTN_idlist, 0).getChildCount(ASTN_L_id);
 				for (counter = 0; counter < num_idlist; counter ++) {
@@ -502,13 +519,13 @@ Ice9Proc &ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 		newProc -> setDeclar(nd);
 		newProc -> setDefine(nd);
 		if (nd.getChildCount(ASTN_L_id) > 1) {
-			newProc -> setReturn(typeTab.getType(nd.getChild(ASTN_L_id,1).idValue()));
+			newProc -> setReturn(typeTab.getType(nd.getChild(ASTN_L_id,1).idValue(),nd.line()));
 			if (newProc -> procReturn.type.dim != 0) {
 				semanticError("procedure cannot return an array!",nd.line());
 			}
 		}
-		if (theProc -> procReturn.isvoid == false) {
-			varTab.push(procName, theProc->procReturn.type, nd, nd.line());
+		if (newProc -> procReturn.isvoid == false) {
+			varTab.push(procName, newProc->procReturn.type, nd, nd.line());
 		}
 		if (nd.getChildCount(ASTN_declistx) > 0) {
 			SemanticNode N_declistx;
@@ -520,7 +537,7 @@ Ice9Proc &ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 				N_declist = N_declistx.getChild(ASTN_declist, i);
 				N_idlist = N_declist.getChild(ASTN_idlist,0);
 				Ice9Type currentType;
-				currentType = typeTab.getType(N_declist.getChild(ASTN_L_id, 0).idValue());
+				currentType = typeTab.getType(N_declist.getChild(ASTN_L_id, 0).idValue(), N_declist.line());
 				unsigned j, num_id;
 				num_id = N_idlist.getChildCount(ASTN_L_id);
 				for (j = 0; j < num_id; j++) {
@@ -535,6 +552,43 @@ Ice9Proc &ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 	}
 	return newProc;
 }
+
+void ProcTab::ProcessProccallNode(SemanticNode nd) {
+	assert(nd.type() == ASTN_proccall);
+	if (exist(nd.getChild(ASTN_L_id, 0).idValue()) == false) {
+		semanticError("Try to call a procedure which is neither defined nor declared",nd.line());
+	}
+	if (getProc(nd.getChild(ASTN_L_id, 0).idValue()) -> typeEq(nd) == false) {
+		semanticError("Arguments type mismatch between procedure declaration and procedure call",nd.line());
+	}
+}
+
+Ice9Proc *ProcTab::getProc(char *s) {
+	assert(s != NULL);
+	_procTab *ptr;
+	ptr = tab;
+	while (ptr != NULL) {
+		if (strcmp( ptr->proc.name, s) == 0) {
+			break;
+		}
+		ptr = ptr -> next;
+	}
+	return &(ptr->proc);
+}
+
+bool ProcTab::exist(char *s) {
+	assert(s != NULL);
+	_procTab *ptr;
+	ptr = tab;
+	while (ptr != NULL) {
+		if (strcmp( ptr->proc.name, s) == 0) {
+			return true;
+		}
+		ptr = ptr -> next;
+	}
+	return false;
+}
+
 /*
 class ProcTab {
 private:
@@ -551,7 +605,168 @@ public:
 	bool exist(char *name);
 };
 */
+
+
+char * namedmp(char * s) {
+	// has hard copy @ ice9.l
+	char *str;
+	unsigned i;
+	for (i = 0; *(s + i) != '\0'; i++) {
+		;
+	}
+	str = new char[i + 1];
+	i = 0;
+	while (*(s + i) != '\0') {
+		*(str + i) = *(s + i);
+		i++;
+	}
+	*(str + i) = '\0';
+	return str;
+}
+
+VarTypeTab::VarTypeTab(_tabType t) {
+	tabType = t;
+	tab = NULL;
+}
+
+VarTypeTab::~VarTypeTab() {
+	if (tab == NULL) {
+		return;
+	}
+	_typeTab *ptr;
+	ptr = tab;
+
+	while( tab != NULL) {
+		ptr = tab;
+		tab = tab -> next;
+		delete [](ptr -> name);
+		_visibleStack *vsptr,*ptr2;
+		vsptr = ptr2 = ptr -> visibleStack.next;
+		while (vsptr != NULL) {
+			ptr2 = vsptr;
+			vsptr = vsptr -> next;
+			delete ptr2;
+		}
+		delete ptr;
+	}
+}
+
+bool SemanticNode::eq(SemanticNode sn2) {
+	return data == sn2.data;
+}
+
+bool operator==(SemanticNode sn1, SemanticNode sn2) {
+	return sn1.eq(sn2);
+}
+
+bool operator!=(SemanticNode sn1, SemanticNode sn2) {
+	return !sn1.eq(sn2);
+}
+
+void VarTypeTab::push(char *s, Ice9Type tp, SemanticNode node, long line) {
+	_typeTab *ptr = NULL;
+	ptr = tab;
+
+	while (ptr != NULL) {
+		if (strcmp(s, ptr->name) == 0) {
+			if ( node == ptr -> visibleStack.visibleWithin ) {
+				if (tabType == VAR_TABLE) {
+					semanticError("Dulplicate variable declaration",line);
+				}
+				else {
+					semanticError("Dulplicate type defination",line);
+				}
+			}
+			_visibleStack *vsptr;
+			vsptr = new _visibleStack;
+			vsptr -> next = ptr -> visibleStack.next;
+			vsptr -> visibleWithin = ptr -> visibleStack.visibleWithin;
+			vsptr -> type = ptr -> visibleStack.type;
+			ptr -> visibleStack.next = vsptr;
+			ptr -> visibleStack.type = tp;
+			ptr -> visibleStack.visibleWithin = node;
+			return;
+		}
+		ptr = ptr -> next;
+	}
+	ptr = new _typeTab;
+	ptr -> next = tab;
+	tab = ptr;
+	ptr -> name = namedmp(s);
+	ptr -> visibleStack.next = NULL;
+	ptr -> visibleStack.visibleWithin = node;
+	ptr -> visibleStack.type = tp;
+}
+
+void VarTypeTab::popCorresponding(SemanticNode leaving) {
+	_typeTab *ptr;
+	if (tab == NULL) {
+		return;
+	}
+	ptr = tab -> next;
+	if (tab -> visibleStack.visibleWithin == leaving) {
+		if (tab -> visibleStack.next == NULL) {
+			delete [](tab -> name);
+			delete tab;
+			tab = ptr;
+		}
+		else {
+			tab -> visibleStack.type = tab -> visibleStack.next -> type;
+			tab -> visibleStack.visibleWithin = tab -> visibleStack.next -> visibleWithin;
+			_visibleStack *p;
+			p = tab -> visibleStack.next -> next;
+			delete (tab -> visibleStack.next);
+			tab -> visibleStack.next = p;
+		}
+		return;
+	}
+	ptr = tab;
+	while (ptr -> next != NULL) {
+		if (ptr -> next -> visibleStack.visibleWithin == leaving) {
+			if (ptr -> next -> visibleStack.next == NULL) {
+				delete [](ptr -> next -> name);
+				_typeTab *d;
+				d = ptr -> next;
+				ptr -> next = ptr -> next -> next;
+				delete d;
+			}
+			else {
+				ptr -> next -> visibleStack.type = ptr -> next -> visibleStack.next -> type;
+				ptr -> next -> visibleStack.visibleWithin = ptr -> next -> visibleStack.next -> visibleWithin;
+				_visibleStack *p;
+				p = ptr -> next -> visibleStack.next -> next;
+				delete (ptr -> next -> visibleStack.next);
+				ptr -> next -> visibleStack.next = p;
+			}
+		}
+		ptr = ptr->next;;
+	}
+}
+
+Ice9Type VarTypeTab::getType(char *s, long line) {
+	_typeTab *ptr;
+	ptr = tab;
+	while (ptr != NULL) {
+		if (strcmp(s,ptr -> name) == 0) {
+			break;
+		}
+		ptr = ptr -> next;
+	}
+	if (ptr == NULL) {
+		if (tabType == VAR_TABLE) {
+			semanticError("Variable not declared!", line);
+		}
+		else {
+			semanticError("Type not defined!", line);
+		}
+	}
+	return ptr -> visibleStack.type;
+}
 /*
+enum _tabType{
+	VAR_TABLE,
+	TYPE_TABLE
+};
 class VarTypeTab {
 private:
 	struct _typeTab {
@@ -563,13 +778,13 @@ private:
 		char *name;
 		_typeTab *next;
 	} *tab;
+	_tabType tabType;
 public:
-	VarTypeTab();
+	VarTypeTab(_tabType t);
 	~VarTypeTab();
-	bool isConflict(char *s, SemanticNode visibleNode);
 	void push(char *s, Ice9Type tp, SemanticNode node, long line);
 	void popCorresponding(SemanticNode leaving);
-	Ice9Type getType(char *s);
+	Ice9Type getType(char *s, long line);
 };
 */
 int semanticCheck(SemanticTree tr) {
@@ -577,4 +792,6 @@ int semanticCheck(SemanticTree tr) {
 	return 0;
 }
 Ice9Type getTypeGeneral(SemanticNode nd) {
+	Ice9Type r;
+	return r;
 }

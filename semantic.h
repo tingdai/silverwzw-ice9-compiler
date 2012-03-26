@@ -8,10 +8,10 @@ extern "C" {
 
 class SemanticNode {
 protected:
-	static bool isfree;
 	AST *data;
 	SemanticNode(AST *d);
 public:
+	static bool isfree;
 	bool eq(SemanticNode sn2);
 	SemanticNode();
 	NodeType type();
@@ -33,7 +33,6 @@ void travNode(SemanticNode nd);
 class SemanticTree : public SemanticNode {
 public:
 	SemanticTree();
-	void freeTree();
 };
 
 enum Ice9BaseType {

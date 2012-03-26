@@ -14,8 +14,14 @@ const Ice9Type BOOLEAN={ice9bool,0};
 const Ice9Type STR={ice9str,0}; 
 
 bool SemanticNode::isfree = false;
-VarTypeTab typeTab(TYPE_TABLE) ,varTab(VAR_TABLE);
+// the order is important!
+// proTab should be defined first!
+// deconstructor of procTab will free the ASTree
+// so it's deconstructor should be called last so it should be defined first
+// cannot write a deconstructor for ASTree because ASTree is written in C
+// cannot free ASTree in main(), otherwise the memory will be freed before these global class is deconstructed.
 ProcTab procTab;
+VarTypeTab typeTab(TYPE_TABLE) ,varTab(VAR_TABLE);
 unsigned loop_counter = 0;
 SemanticNode current_scope;
 
@@ -102,7 +108,7 @@ void nodeCheckIn(SemanticNode nd) {
 			}
 		}
 		lvlIdType.dim = 0;
-		if (lvlIdType != getTypeGeneral(nd.getChild(ASTN_exp))) {
+		if (lvlIdType != getTypeGeneral(nd.getChild(ASTN_exp, 0))) {
 			semanticError("Type mismatch between LHS and RHS in assign statement",nd.line());
 		}
 		break;
@@ -154,7 +160,7 @@ bool operator!=(Ice9Type t1, Ice9Type t2) {
 }
 
 void semanticError(char *errmsg, int lineno) {
-	std::cerr << "line " << lineno << ':' << errmsg << std::endl;
+	std::cerr << "line " << lineno << ": " << errmsg << std::endl;
 	exit(1);
 }
 
@@ -317,11 +323,6 @@ void ASTfree(AST * nd) {
 	free(nd);
 }
 
-void SemanticTree::freeTree() {
-	assert(isfree == false);
-	ASTfree(&ASTroot);
-	isfree = true;
-}
 
 /*
 class SemanticTree : public SemanticNode {
@@ -385,7 +386,7 @@ void Ice9Proc::addArg(Ice9Type arg) {
 void Ice9Proc::setReturn(Ice9Type arg) {
 	assert(procReturn.isvoid == true);
 	procReturn.type = arg;
-	procReturn.isvoid == false;
+	procReturn.isvoid = false;
 }
 
 Ice9Type Ice9Proc::getArg(unsigned i) {
@@ -466,7 +467,7 @@ bool Ice9Proc::typeEq(SemanticNode n) {
 
 				N_declist = N_declistx.getChild(ASTN_declist, k);
 
-				declistType = typeTab.getType(N_declist.getChild(ASTN_L_id).idValue(), N_declist.line());
+				declistType = typeTab.getType(N_declist.getChild(ASTN_L_id, 0).idValue(), N_declist.line());
 				ids = N_declist.getChild(ASTN_idlist, 0).getChildCount(ASTN_L_id);
 
 				for (l = 0; l < ids; l++){
@@ -552,6 +553,8 @@ ProcTab::~ProcTab() {
 		}
 		delete ptr;
 	}
+	ASTfree(&ASTroot);
+	SemanticNode::isfree = true;
 }
 
 _procTab::_procTab(char *s) : proc(s) {

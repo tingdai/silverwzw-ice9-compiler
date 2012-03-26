@@ -950,6 +950,11 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 			semanticError("Comparison operators: < > <= >= only accept int", nd.line());
 		}
 		return BOOLEAN;
+	case ASTN_typedes:
+		d = nd.getChildCount(ASTN_L_int);
+		r = typeTab.getType(nd.getChild(ASTN_L_id,0).idValue(), nd.line());
+		r.dim += d;
+		return r;
 	default:
 		assert(false);
 	}
@@ -958,22 +963,101 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 
 void nodeCheckIn(SemanticNode nd) {
 	NodeType ndtp;
+	unsigned i,j;
 	ndtp = nd.type();
 	if (ndtp == ASTN_proc) {
 		current_scope = nd;
 	}
 	switch(ndtp) {
 	case ASTN_forward:
+		procTab.ProcessProcAndForwardNode(nd);
+		break;
 	case ASTN_stm: // only for stm -> exp ';'
+		if (nd.getChildCount() == 1 && nd.getChildCount(ASTN_exp) == 1) { 
+			getTypeGeneral(nd.getChild(0));
+		}
+		break;
 	case ASTN_proc:
+		procTab.ProcessProcAndForwardNode(nd);
+		//current scope changes at the beginning of the function.
+		break;
 	case ASTN_L_break:
+		if (loop_counter == 0) {
+			semanticError("statement break cannot be used outside a loop",nd.line());
+		}
+		break;
 	case ASTN_fa:
-	case ASTN_assign:
+		i = nd.getChildCount(ASTN_L_id);
+		j = nd.getChildCount(ASTN_exp);
+		assert(i == 1 && j == 2);
+		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) != INT || getTypeGeneral(nd.getChild(ASTN_exp,1)) != INT) {
+			semanticError("start and end expression in fa should be int", nd.line());
+		}
+		varTab.push(nd.getChild(ASTN_L_id,0).idValue(), INT, nd, nd.line());
+		//no break here
+	case ASTN_do:
+		loop_counter++;
+		break;
+	case ASTN_assign: {
+		i = nd.getChildCount(ASTN_L_id);
+		j = nd.getChildCount(ASTN_exp);
+		assert(i == 1 && j == 1);
+		SemanticNode lvl;
+		lvl = nd.getChild(ASTN_lvalue, 0);
+		i = lvl.getChildCount(ASTN_L_id);
+		j = lvl.getChildCount(ASTN_exp);
+		assert(i == 1);
+		Ice9Type lvlIdType;
+		lvlIdType = varTab.getType(lvl.getChild(ASTN_L_id,0).idValue(), nd.line());
+		if (lvlIdType.dim > j) {
+			semanticError("Array is not a valid LHS in assign statement",nd.line());
+		}
+		if (lvlIdType.dim < j) {
+			semanticError("Too many subscript for array", nd.line());
+		}
+		for (i = 0; i < j; i++) {
+			if (getTypeGeneral(lvl.getChild(ASTN_exp, i)) != INT) {
+				semanticError("Type of subscript should be int",nd.line());
+			}
+		}
+		lvlIdType.dim = 0;
+		if (lvlIdType != getTypeGeneral(nd.getChild(ASTN_exp))) {
+			semanticError("Type mismatch between LHS and RHS in assign statement",nd.line());
+		}
+		break;
+	}
 	case ASTN_write: //merge this two
 	case ASTN_writes: //merge this two
-	case ASTN_var:
-	case ASTN_type:
-	case ASTN_if:
+		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) == BOOLEAN) {
+			semanticError("bool is not a valid type in write statement",nd.line());
+		}
+		break;
+	case ASTN_varlist:{
+		SemanticNode idlst;
+		Ice9Type tp;
+		idlst = nd.getChild(ASTN_idlist, 0);
+		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
+		j = idlst.getChildCount(ASTN_L_id);
+		for (i = 0; i < j; i++) {
+			varTab.push(idlst.getChild(ASTN_L_id, i).idValue(), tp, current_scope, nd.line());
+		}
+		break;
+	}
+	case ASTN_type: {
+		Ice9Type tp;
+		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
+		typeTab.push(nd.getChild(ASTN_L_id, 0).idValue(), tp, current_scope, nd.line());
+		break;
+	}
+	case ASTN_branch:
+		i = nd.getChildCount(ASTN_exp);
+		assert(i == 1 || i == 0);
+		if (i == 1){
+			if(getTypeGeneral(nd.getChild(ASTN_exp, 0)) != BOOLEAN) {
+				semanticError("branch condition should return a bool value", nd.line());
+			}
+		}
+		break;
 	default:
 		break;
 	}
@@ -982,15 +1066,22 @@ void nodeCheckIn(SemanticNode nd) {
 
 void nodeCheckOut(SemanticNode nd) {
 	switch(nd.type()) {
-	case ASTN_proc:
-		{
+	case ASTN_proc:{
 		SemanticTree tr;
 		current_scope = *(SemanticNode *)&tr;
-		}
-		// no break here!
+	}
+		varTab.popCorresponding(nd);
+		typeTab.popCorresponding(nd);
+		break;
 	case ASTN_fa:
 		varTab.popCorresponding(nd);
 		typeTab.popCorresponding(nd);
+		//no break here
+	case ASTN_do:
+		assert(loop_counter > 0);
+		loop_counter--;
+		break;
+	default:
 		break;
 	}
 	return;
@@ -1000,9 +1091,13 @@ void travNode(SemanticNode nd) {
 	nodeCheckIn(nd);
 	SemanticNode x;
 	x.data = nd.data -> child;
-	travNode(x);
+	if (x.data != NULL) {
+		travNode(x);
+	}
 	x.data = nd.data -> brother;
-	travNode(x);
+	if (x.data != NULL) {
+		travNode(x);
+	}
 	nodeCheckOut(nd);
 }
 

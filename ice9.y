@@ -294,12 +294,14 @@ NT_do:	  TK_DO NT_exp TK_ARROW TK_OD
 NT_fa:	  TK_FA TK_ID TK_ASSIGN NT_exp TK_TO NT_exp TK_ARROW TK_AF
 	{
 		$$ = newNode(ASTN_fa, $1);
+		appendChild($$, newIdNode($2));
 		appendBrother($4, $6);
 		appendChild($$, $4);
 	}
      	| TK_FA TK_ID TK_ASSIGN NT_exp TK_TO NT_exp TK_ARROW NT_stms TK_AF
 	{
 		$$ = newNode(ASTN_fa, $1);
+		appendChild($$, newIdNode($2));
 		appendBrother($4, $6);
 		appendBrother($6, $8);
 		appendChild($$, $4);

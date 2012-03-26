@@ -80,3 +80,5 @@ AST *newIdNode(char *va) {
 	node -> value.str = va;
 	return node;
 }
+
+AST ASTroot;

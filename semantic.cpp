@@ -5,7 +5,6 @@
 #include "semantic.h"
 extern "C" {
 #include "ice9.tab.h"
-#include "parse.h"
 #include "ast.h"
 }
 #include <new>
@@ -19,6 +18,132 @@ VarTypeTab typeTab(TYPE_TABLE) ,varTab(VAR_TABLE);
 ProcTab procTab;
 unsigned loop_counter = 0;
 SemanticNode current_scope;
+
+void nodeCheckOut(SemanticNode nd) {
+	switch(nd.type()) {
+	case ASTN_proc:{
+		SemanticTree tr;
+		current_scope = *(SemanticNode *)&tr;
+	}
+		varTab.popCorresponding(nd);
+		typeTab.popCorresponding(nd);
+		break;
+	case ASTN_fa:
+		varTab.popCorresponding(nd);
+		typeTab.popCorresponding(nd);
+		//no break here
+	case ASTN_do:
+		assert(loop_counter > 0);
+		loop_counter--;
+		break;
+	default:
+		break;
+	}
+	return;
+}
+
+void nodeCheckIn(SemanticNode nd) {
+	NodeType ndtp;
+	unsigned i,j;
+	ndtp = nd.type();
+	if (ndtp == ASTN_proc) {
+		current_scope = nd;
+	}
+	switch(ndtp) {
+	case ASTN_forward:
+		procTab.ProcessProcAndForwardNode(nd);
+		break;
+	case ASTN_stm: // only for stm -> exp ';'
+		if (nd.getChildCount() == 1 && nd.getChildCount(ASTN_exp) == 1) { 
+			getTypeGeneral(nd.getChild(0));
+		}
+		break;
+	case ASTN_proc:
+		procTab.ProcessProcAndForwardNode(nd);
+		//current scope changes at the beginning of the function.
+		break;
+	case ASTN_L_break:
+		if (loop_counter == 0) {
+			semanticError("statement break cannot be used outside a loop",nd.line());
+		}
+		break;
+	case ASTN_fa:
+		i = nd.getChildCount(ASTN_L_id);
+		j = nd.getChildCount(ASTN_exp);
+		assert(i == 1 && j == 2);
+		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) != INT || getTypeGeneral(nd.getChild(ASTN_exp,1)) != INT) {
+			semanticError("start and end expression in fa should be int", nd.line());
+		}
+		varTab.push(nd.getChild(ASTN_L_id,0).idValue(), INT, nd, nd.line());
+		//no break here
+	case ASTN_do:
+		loop_counter++;
+		break;
+	case ASTN_assign: {
+		i = nd.getChildCount(ASTN_lvalue);
+		j = nd.getChildCount(ASTN_exp);
+		assert(i == 1 && j == 1);
+		SemanticNode lvl;
+		lvl = nd.getChild(ASTN_lvalue, 0);
+		i = lvl.getChildCount(ASTN_L_id);
+		j = lvl.getChildCount(ASTN_exp);
+		assert(i == 1);
+		Ice9Type lvlIdType;
+		lvlIdType = varTab.getType(lvl.getChild(ASTN_L_id,0).idValue(), nd.line());
+		if (lvlIdType.dim > j) {
+			semanticError("Array is not a valid LHS in assign statement",nd.line());
+		}
+		if (lvlIdType.dim < j) {
+			semanticError("Too many subscript for array", nd.line());
+		}
+		for (i = 0; i < j; i++) {
+			if (getTypeGeneral(lvl.getChild(ASTN_exp, i)) != INT) {
+				semanticError("Type of subscript should be int",nd.line());
+			}
+		}
+		lvlIdType.dim = 0;
+		if (lvlIdType != getTypeGeneral(nd.getChild(ASTN_exp))) {
+			semanticError("Type mismatch between LHS and RHS in assign statement",nd.line());
+		}
+		break;
+	}
+	case ASTN_write: //merge this two
+	case ASTN_writes: //merge this two
+		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) == BOOLEAN) {
+			semanticError("bool is not a valid type in write statement",nd.line());
+		}
+		break;
+	case ASTN_varlist:{
+		SemanticNode idlst;
+		Ice9Type tp;
+		idlst = nd.getChild(ASTN_idlist, 0);
+		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
+		j = idlst.getChildCount(ASTN_L_id);
+		for (i = 0; i < j; i++) {
+			varTab.push(idlst.getChild(ASTN_L_id, i).idValue(), tp, current_scope, nd.line());
+		}
+		break;
+	}
+	case ASTN_type: {
+		Ice9Type tp;
+		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
+		typeTab.push(nd.getChild(ASTN_L_id, 0).idValue(), tp, current_scope, nd.line());
+		break;
+	}
+	case ASTN_branch:
+		i = nd.getChildCount(ASTN_exp);
+		assert(i == 1 || i == 0);
+		if (i == 1){
+			if(getTypeGeneral(nd.getChild(ASTN_exp, 0)) != BOOLEAN) {
+				semanticError("branch condition should return a bool value", nd.line());
+			}
+		}
+		break;
+	default:
+		break;
+	}
+	return;
+}
 
 bool operator==(Ice9Type t1, Ice9Type t2) {
 	return (t1.dim == t2.dim && t1.base == t2.base);
@@ -93,7 +218,8 @@ SemanticNode SemanticNode::getChild(unsigned i) {
 	unsigned j = 0;
 	AST *ptr;
 	ptr = data -> child;
-	for (j = 0; j < i; j++) {
+	assert(ptr != NULL);
+	for (j = 1; j < i; j++) {
 		ptr = ptr -> brother;
 		assert(ptr != NULL);
 	}
@@ -106,7 +232,10 @@ SemanticNode SemanticNode::getChild(NodeType tp, unsigned i) {
 	unsigned j = 0;
 	AST *ptr;
 	ptr = data -> child;
-	j = 0;
+	assert(ptr != NULL);
+	if(ptr -> sym == tp) {
+		j++;
+	}
 	while ( j <= i ) {
 		ptr = ptr -> brother;
 		assert(ptr != NULL);
@@ -961,131 +1090,7 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 	return r;//dummy return
 }
 
-void nodeCheckIn(SemanticNode nd) {
-	NodeType ndtp;
-	unsigned i,j;
-	ndtp = nd.type();
-	if (ndtp == ASTN_proc) {
-		current_scope = nd;
-	}
-	switch(ndtp) {
-	case ASTN_forward:
-		procTab.ProcessProcAndForwardNode(nd);
-		break;
-	case ASTN_stm: // only for stm -> exp ';'
-		if (nd.getChildCount() == 1 && nd.getChildCount(ASTN_exp) == 1) { 
-			getTypeGeneral(nd.getChild(0));
-		}
-		break;
-	case ASTN_proc:
-		procTab.ProcessProcAndForwardNode(nd);
-		//current scope changes at the beginning of the function.
-		break;
-	case ASTN_L_break:
-		if (loop_counter == 0) {
-			semanticError("statement break cannot be used outside a loop",nd.line());
-		}
-		break;
-	case ASTN_fa:
-		i = nd.getChildCount(ASTN_L_id);
-		j = nd.getChildCount(ASTN_exp);
-		assert(i == 1 && j == 2);
-		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) != INT || getTypeGeneral(nd.getChild(ASTN_exp,1)) != INT) {
-			semanticError("start and end expression in fa should be int", nd.line());
-		}
-		varTab.push(nd.getChild(ASTN_L_id,0).idValue(), INT, nd, nd.line());
-		//no break here
-	case ASTN_do:
-		loop_counter++;
-		break;
-	case ASTN_assign: {
-		i = nd.getChildCount(ASTN_L_id);
-		j = nd.getChildCount(ASTN_exp);
-		assert(i == 1 && j == 1);
-		SemanticNode lvl;
-		lvl = nd.getChild(ASTN_lvalue, 0);
-		i = lvl.getChildCount(ASTN_L_id);
-		j = lvl.getChildCount(ASTN_exp);
-		assert(i == 1);
-		Ice9Type lvlIdType;
-		lvlIdType = varTab.getType(lvl.getChild(ASTN_L_id,0).idValue(), nd.line());
-		if (lvlIdType.dim > j) {
-			semanticError("Array is not a valid LHS in assign statement",nd.line());
-		}
-		if (lvlIdType.dim < j) {
-			semanticError("Too many subscript for array", nd.line());
-		}
-		for (i = 0; i < j; i++) {
-			if (getTypeGeneral(lvl.getChild(ASTN_exp, i)) != INT) {
-				semanticError("Type of subscript should be int",nd.line());
-			}
-		}
-		lvlIdType.dim = 0;
-		if (lvlIdType != getTypeGeneral(nd.getChild(ASTN_exp))) {
-			semanticError("Type mismatch between LHS and RHS in assign statement",nd.line());
-		}
-		break;
-	}
-	case ASTN_write: //merge this two
-	case ASTN_writes: //merge this two
-		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) == BOOLEAN) {
-			semanticError("bool is not a valid type in write statement",nd.line());
-		}
-		break;
-	case ASTN_varlist:{
-		SemanticNode idlst;
-		Ice9Type tp;
-		idlst = nd.getChild(ASTN_idlist, 0);
-		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
-		j = idlst.getChildCount(ASTN_L_id);
-		for (i = 0; i < j; i++) {
-			varTab.push(idlst.getChild(ASTN_L_id, i).idValue(), tp, current_scope, nd.line());
-		}
-		break;
-	}
-	case ASTN_type: {
-		Ice9Type tp;
-		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
-		typeTab.push(nd.getChild(ASTN_L_id, 0).idValue(), tp, current_scope, nd.line());
-		break;
-	}
-	case ASTN_branch:
-		i = nd.getChildCount(ASTN_exp);
-		assert(i == 1 || i == 0);
-		if (i == 1){
-			if(getTypeGeneral(nd.getChild(ASTN_exp, 0)) != BOOLEAN) {
-				semanticError("branch condition should return a bool value", nd.line());
-			}
-		}
-		break;
-	default:
-		break;
-	}
-	return;
-}
 
-void nodeCheckOut(SemanticNode nd) {
-	switch(nd.type()) {
-	case ASTN_proc:{
-		SemanticTree tr;
-		current_scope = *(SemanticNode *)&tr;
-	}
-		varTab.popCorresponding(nd);
-		typeTab.popCorresponding(nd);
-		break;
-	case ASTN_fa:
-		varTab.popCorresponding(nd);
-		typeTab.popCorresponding(nd);
-		//no break here
-	case ASTN_do:
-		assert(loop_counter > 0);
-		loop_counter--;
-		break;
-	default:
-		break;
-	}
-	return;
-}
 
 void travNode(SemanticNode nd) {
 	nodeCheckIn(nd);

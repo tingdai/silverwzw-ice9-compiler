@@ -3,6 +3,7 @@
 
 extern "C" {
 #include "ast.h"
+#include "parse.h"
 }
 
 class SemanticNode {
@@ -133,4 +134,5 @@ public:
 
 int semanticCheck(SemanticTree tree);
 Ice9Type getTypeGeneral(SemanticNode nd);
+void semanticError(char *errmsg, int lineno);
 #endif

@@ -94,6 +94,7 @@ class ProcTab {
 private:
 	_procTab *tab;
 public:
+	bool checkDef;
 	ProcTab();
 	~ProcTab();
 	Ice9Proc *ProcessProcAndForwardNode(SemanticNode nd);

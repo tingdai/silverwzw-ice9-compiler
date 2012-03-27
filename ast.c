@@ -29,14 +29,24 @@ AST *appendChild(AST *parent, AST * childNd) {
 }
 AST *insertChild(AST *parent, AST * childNd) {
 	assert(parent != NULL && childNd != NULL);
-	childNd -> brother = parent -> child;
+	AST *ptr;
+	ptr = childNd;
+	while (ptr -> brother != NULL) {
+		ptr = ptr -> brother;
+	}
+	ptr -> brother = parent -> child;
 	parent -> child = childNd;
 	return parent;
 }
 
 AST *appendBrother(AST *leftNode, AST *tobeappend) {
+	AST *ptr;
+	ptr = tobeappend;;
 	assert(leftNode != NULL && tobeappend != NULL);
-	tobeappend -> brother = leftNode -> brother;
+	while (ptr -> brother != NULL) {
+		ptr = ptr -> brother;
+	}
+	ptr -> brother = leftNode -> brother;
 	leftNode -> brother = tobeappend;
 	return leftNode;
 }

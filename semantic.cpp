@@ -543,6 +543,7 @@ struct Ice9Type {
 
 ProcTab::ProcTab() {
 	tab = NULL;
+	checkDef = false;
 }
 
 ProcTab::~ProcTab() {
@@ -551,7 +552,9 @@ ProcTab::~ProcTab() {
 		ptr = tab;
 		tab = tab -> next;
 		if (ptr -> proc.define().isNull() == true) {
-			semanticError("procedure declared but not defined!", ptr -> proc.declar().line());
+			if (checkDef) {
+				semanticError("procedure declared but not defined!", ptr -> proc.declar().line());
+			}
 		}
 		delete ptr;
 	}
@@ -770,15 +773,15 @@ VarTypeTab::VarTypeTab(_tabType t) {
 	tabType = t;
 	tab = NULL;
 	if (tabType == TYPE_TABLE) {
-		SemanticTree smtree;
+		SemanticNode outermost;
 		Ice9Type ice9type;
 		ice9type.base = ice9int;
 		ice9type.dim = 0;
-		push("int",ice9type,smtree,-1);
+		push("int",ice9type,outermost,-1);
 		ice9type.base = ice9str;
-		push("string",ice9type,smtree,-1);
+		push("string",ice9type,outermost,-1);
 		ice9type.base = ice9bool;
-		push("bool",ice9type,smtree,-1);
+		push("bool",ice9type,outermost,-1);
 	}
 }
 
@@ -1127,5 +1130,6 @@ void travNode(SemanticNode nd) {
 int semanticCheck(SemanticTree tr) {
 	current_scope = *(SemanticNode *)&tr;
 	travNode(current_scope);
+	procTab.checkDef = true;
 	return 0;
 }

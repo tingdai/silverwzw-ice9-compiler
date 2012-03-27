@@ -14,13 +14,8 @@ const Ice9Type BOOLEAN={ice9bool,0};
 const Ice9Type STR={ice9str,0}; 
 
 bool SemanticNode::isfree = false;
-// the order is important!
-// proTab should be defined first!
-// deconstructor of procTab will free the ASTree
-// so it's deconstructor should be called last so it should be defined first
-// cannot write a deconstructor for ASTree because ASTree is written in C
-// cannot free ASTree in main(), otherwise the memory will be freed before these global class is deconstructed.
-ProcTab procTab;
+
+ProcTab procTab;// the order is important!
 VarTypeTab typeTab(TYPE_TABLE) ,varTab(VAR_TABLE);
 unsigned loop_counter = 0;
 SemanticNode current_scope;
@@ -81,8 +76,12 @@ void nodeCheckIn(SemanticNode nd) {
 			semanticError("start and end expression in fa should be int", nd.line());
 		}
 		varTab.push(nd.getChild(ASTN_L_id,0).idValue(), INT, nd, nd.line());
-		//no break here
+		loop_counter++;
+		break;
 	case ASTN_do:
+		if(getTypeGeneral(nd.getChild(ASTN_exp, 0)) != BOOLEAN) {
+			semanticError("condition expression in do should be bool", nd.line());
+		}
 		loop_counter++;
 		break;
 	case ASTN_assign: {
@@ -96,6 +95,9 @@ void nodeCheckIn(SemanticNode nd) {
 		assert(i == 1);
 		Ice9Type lvlIdType;
 		lvlIdType = varTab.getType(lvl.getChild(ASTN_L_id,0).idValue(), nd.line());
+		if (varTab.isFaCounter(lvl.getChild(ASTN_L_id, 0).idValue())) {
+			semanticError("making assignment to fa counter is not allowed.", nd.line());
+		}
 		if (lvlIdType.dim > j) {
 			semanticError("Array is not a valid LHS in assign statement",nd.line());
 		}
@@ -115,8 +117,8 @@ void nodeCheckIn(SemanticNode nd) {
 	}
 	case ASTN_write: //merge this two
 	case ASTN_writes: //merge this two
-		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) == BOOLEAN) {
-			semanticError("bool is not a valid type in write statement",nd.line());
+		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) != INT && getTypeGeneral(nd.getChild(ASTN_exp,0)) != STR) {
+			semanticError("Only int and string is valid type in write statement",nd.line());
 		}
 		break;
 	case ASTN_varlist:{
@@ -451,7 +453,7 @@ bool Ice9Proc::typeEq(SemanticNode n) {
 			}
 		}
 //check arguments
-		if (n.getChildCount(ASTN_declistx) == 0 && procArgs != NULL) { // if declars no args but define has args
+		if (n.getChildCount(ASTN_declistx) == 0 && argCount() != 0) { // if declar and define has different number of args
 			return false;
 		}
 		if (n.getChildCount(ASTN_declistx) > 0) { 
@@ -471,16 +473,16 @@ bool Ice9Proc::typeEq(SemanticNode n) {
 				ids = N_declist.getChild(ASTN_idlist, 0).getChildCount(ASTN_L_id);
 
 				for (l = 0; l < ids; l++){
-					if ( j == argCountByDec) {
+					if ( i == argCountByDec) {
 						return false;
 					}
-					if (getArg(j) != declistType) {
+					if (getArg(i) != declistType) {
 						return false;
 					}
-					j++;
+					i++;
 				}
 			}
-			if ( j != argCountByDec ) {
+			if ( i != argCountByDec ) {
 				return false;
 			}
 		}
@@ -548,8 +550,8 @@ ProcTab::~ProcTab() {
 	while( tab != NULL) {
 		ptr = tab;
 		tab = tab -> next;
-		if (ptr -> proc.declar().isNull() == true) {
-			semanticError("procedure declared but not defined!", ptr -> proc.define().line());
+		if (ptr -> proc.define().isNull() == true) {
+			semanticError("procedure declared but not defined!", ptr -> proc.declar().line());
 		}
 		delete ptr;
 	}
@@ -583,7 +585,7 @@ Ice9Proc *ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 				semanticError("procedure already defined!", nd.line());
 			}
 			theProc -> setDefine(nd);
-			if (theProc -> typeEq(nd)) {
+			if (!(theProc -> typeEq(nd))) {
 				semanticError("procedure return type or argument types do not match previous declaration", nd.line());
 			}
 			if (theProc -> procReturn.isvoid == false) {
@@ -913,6 +915,18 @@ Ice9Type VarTypeTab::getType(char *s, long line) {
 	}
 	return ptr -> visibleStack.type;
 }
+
+bool VarTypeTab::isFaCounter(char *s) {
+	_typeTab *ptr;
+	ptr = tab;
+	while (ptr != NULL) {
+		if (strcmp(s,ptr -> name) == 0) {
+			break;
+		}
+		ptr = ptr -> next;
+	}
+	return (ptr -> visibleStack.visibleWithin.type() == ASTN_fa);
+}
 /*
 enum _tabType{
 	VAR_TABLE,
@@ -1036,13 +1050,14 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		if(r1 != r2) {
 			semanticError("Star operator: RHS and LHS type not match", nd.line());
 		}
+		return r1;
 	case ASTN_div:
 		d = nd.getChildCount(ASTN_exp);
 		assert(d == 2);	
 		r1 = getTypeGeneral(nd.getChild(ASTN_exp, 0));
 		r2 = getTypeGeneral(nd.getChild(ASTN_exp, 1));
 		if (r2 != INT || r1 != INT) {
-			semanticError("Minus operator only accept int", nd.line());
+			semanticError("Div operator only accept int", nd.line());
 		}
 		return INT;
 	case ASTN_mod:
@@ -1102,11 +1117,11 @@ void travNode(SemanticNode nd) {
 	if (x.data != NULL) {
 		travNode(x);
 	}
+	nodeCheckOut(nd);
 	x.data = nd.data -> brother;
 	if (x.data != NULL) {
 		travNode(x);
 	}
-	nodeCheckOut(nd);
 }
 
 int semanticCheck(SemanticTree tr) {

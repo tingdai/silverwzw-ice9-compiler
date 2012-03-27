@@ -60,13 +60,13 @@ void yyerror(char *s)
 %token TK_ASSIGN
 %token TK_COMMA
 
+%nonassoc <intt> TK_EQ TK_NEQ TK_GT TK_LT TK_GE TK_LE
+
 %left <intt> TK_PLUS TK_MINUS
 
 %left <intt> TK_STAR TK_SLASH TK_MOD
 
 %right <intt> TK_QUEST UMINUS
-
-%nonassoc <intt> TK_EQ TK_NEQ TK_GT TK_LT TK_GE TK_LE
 
 %token <str> TK_SLIT
 %token <intt> TK_INT
@@ -551,13 +551,13 @@ NT_type:  TK_TYPE TK_ID TK_EQ TK_ID NT_dim TK_SEMI
 	{
 		$$ = newNode(ASTN_type, $1);
 		appendChild($$, newIdNode($2));
-		appendChild($$, appendChild(appendChild(newNode(ASTN_typedes, -1), newIdNode($4)),$5));
+		appendChild($$, appendChild(appendChild(newNode(ASTN_typedes, $1), newIdNode($4)),$5));
 	}
 	| TK_TYPE TK_ID TK_EQ TK_ID TK_SEMI
 	{
 		$$ = newNode(ASTN_type, $1);
 		appendChild($$, newIdNode($2));
-		appendChild($$, appendChild(newNode(ASTN_typedes, -1), newIdNode($4)));
+		appendChild($$, appendChild(newNode(ASTN_typedes, $1), newIdNode($4)));
 	}
 	;
 

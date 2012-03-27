@@ -129,6 +129,7 @@ public:
 	void push(char *s, Ice9Type tp, SemanticNode node, long line);
 	void popCorresponding(SemanticNode leaving);
 	Ice9Type getType(char *s, long line);
+	bool isFaCounter(char *s);
 };
 
 int semanticCheck(SemanticTree tree);

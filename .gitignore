@@ -7,3 +7,5 @@ ice9.yy.c
 test/*
 *.swp
 t
+log
+test.py

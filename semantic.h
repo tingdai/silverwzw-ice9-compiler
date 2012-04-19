@@ -6,6 +6,13 @@ extern "C" {
 #include "parse.h"
 }
 
+enum Ice9BaseType {
+	ice9int,
+	ice9void,
+	ice9str,
+	ice9bool
+};
+
 class SemanticNode {
 protected:
 	AST *data;
@@ -27,6 +34,8 @@ public:
 	unsigned getChildCount(NodeType tp);
 	SemanticNode getChild(unsigned i);
 	SemanticNode getChild(NodeType t, unsigned i);
+	void reload(Ice9BaseType tp);
+	Ice9BaseType reload();
 	friend void travNode(SemanticNode nd);
 };
 void travNode(SemanticNode nd);
@@ -36,12 +45,6 @@ public:
 	SemanticTree();
 };
 
-enum Ice9BaseType {
-	ice9int,
-	ice9void,
-	ice9str,
-	ice9bool
-};
 
 struct Ice9Type {
 	Ice9BaseType base;

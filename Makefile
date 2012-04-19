@@ -47,4 +47,4 @@ cleanest:
 debug:
 	make DEBUG=-g FIX=.g
 wc:
-	wc -lwc ice9.y ice9.l ast.h ast.c *.cpp semantic.h parse.h
+	wc -lwc ice9.y ice9.l ast.c *.cpp *.h

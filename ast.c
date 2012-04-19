@@ -11,6 +11,7 @@ AST *newNode(NodeType t, int l) {
 	p -> sym = t;
 	p -> brother = NULL;
 	p -> lineno = l;
+	p -> reloadType = NA;
 	return p;
 }
 AST *appendChild(AST *parent, AST * childNd) {

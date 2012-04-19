@@ -1006,6 +1006,12 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		if (r != INT && r != BOOLEAN) {
 			semanticError("unary minus only accept int and bool", nd.line());
 		}
+		if (r == INT) {
+			nd.reload(ice9int);
+		}
+		if (r == BOOLEAN) {
+			nd.reload(ice9bool);
+		}
 		return r;
 	case ASTN_plus:
 		d = nd.getChildCount(ASTN_exp);
@@ -1020,6 +1026,12 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		}
 		if(r1 != r2) {
 			semanticError("Plus operator: RHS and LHS type not match", nd.line());
+		}
+		if (r1 == INT) {
+			nd.reload(ice9int);
+		}
+		if (r1 == BOOLEAN) {
+			nd.reload(ice9bool);
 		}
 		return r1;
 	case ASTN_minus:
@@ -1052,6 +1064,12 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		}
 		if(r1 != r2) {
 			semanticError("Star operator: RHS and LHS type not match", nd.line());
+		}
+		if (r1 == INT) {
+			nd.reload(ice9int);
+		}
+		if (r1 == BOOLEAN) {
+			nd.reload(ice9bool);
 		}
 		return r1;
 	case ASTN_div:
@@ -1086,6 +1104,12 @@ Ice9Type getTypeGeneral(SemanticNode nd) {
 		}
 		if(r1 != r2) {
 			semanticError("Equal/Not-equal operator: RHS and LHS type not match", nd.line());
+		}
+		if (r1 == INT) {
+			nd.reload(ice9int);
+		}
+		if (r1 == BOOLEAN) {
+			nd.reload(ice9bool);
 		}
 		return BOOLEAN;
 	case ASTN_gt:
@@ -1135,7 +1159,7 @@ int semanticCheck(SemanticTree tr) {
 }
 
 bool SemanticNode::gt(SemanticNode sn2) {
-	return ((unsigned)(sn1.data))>((unsigned)(sn2.data));
+	return ((unsigned)(data))>((unsigned)(sn2.data));
 }
 
 bool operator<=(SemanticNode sn1, SemanticNode sn2) {
@@ -1152,4 +1176,24 @@ bool operator>=(SemanticNode sn1, SemanticNode sn2) {
 
 bool operator>(SemanticNode sn1, SemanticNode sn2) {
 	return sn1.gt(sn2);
+}
+
+void SemanticNode::reload(Ice9BaseType tp) {
+	if (tp == ice9int) {
+		data -> reloadType = RELOAD_INT;
+	}
+	else if (tp == ice9bool) {
+		data -> reloadType = RELOAD_BOOL;
+	}
+	assert(false);
+}
+
+Ice9BaseType SemanticNode::reload() {
+	if (data -> reloadType == RELOAD_INT) {
+		return ice9int;
+	}
+	else if (data -> reloadType == RELOAD_BOOL) {
+		return ice9bool;
+	}
+	assert(false);
 }

@@ -54,12 +54,18 @@ typedef enum {
 } NodeType;
 
 typedef enum {TRUE, FALSE} BOOL;
+typedef enum {
+	NA,
+	RELOAD_INT,
+	RELOAD_BOOL
+} RELOAD_TYPE;
 
 typedef struct _AST {
 	struct _AST *child;
 	struct _AST *brother;
 	NodeType sym;
 	long lineno;
+	RELOAD_TYPE reloadType;
 	union {
 		char *str;
 		int num;

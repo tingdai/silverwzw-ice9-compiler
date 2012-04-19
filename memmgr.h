@@ -14,7 +14,6 @@ struct VMPair {
 };
 
 extern std::map<Varname, MemOffset> globalVar;
-extern std::map<SemanticNode, MemOffset> globalTmp;
 
 class ARMgr {
 private:
@@ -38,12 +37,19 @@ public:
 	MemOffset lookupExp(SemanticNode exp);
 	MemOffset lookupFa(Varname);
 	MemOffset pushPara(Varname);
-	MemOffset insert(Varname);
+	virtual MemOffset insert(Varname);
+	virtual MemOffset insertArray(Varname, std::vector<unsigned>);
 	MemOffset insert(SemanticNode exp);
 	MemOffset pushFa(Varname);
 	void popFa(Varname);
 	void freeTmp();
 	bool isFa(Varname);
+};
+
+class GlobalARMgr : public ARMgr {
+public:
+	virtual MemOffset insert(Varnamr);
+	virtual MemOffset insertArray(Varname, std::vector<unsigned>);
 };
 
 #endif

@@ -66,14 +66,12 @@ class ProcBlock {
 private:
 	std::vector<Block> blocks;
 public:
-	MemMgr memMgr;
 	ARMgr arMgr;
 	unsigned entrance();
 	void toTM(std::ostream&);
 	void add(Block b);
 	unsigned assignAbsoluteAddr(unsigned Offset);
 };
-
 
 /*
 1. produce intermedia

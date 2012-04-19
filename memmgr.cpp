@@ -3,7 +3,6 @@
 
 
 std::map<Varname, MemOffset> globalVar;
-std::map<SemanticNode, MemOffset> globalTmp;
 
 ARMgr::ARMgr():global(globalVar) {
 	ARlength = 9;
@@ -18,11 +17,12 @@ MemOffset ARMgr::pushFa(Varname n) {
 	vmpt.var = n;
 	vmpt.offset = faNum;
 	forStack.push_back(vmpt);
-	return faNum++;
+	faNum += 2;
+	return faNum - 2;
 }
 
 void ARMgr::popFa(Varname) {
-	faNum --;
+	faNum -= 2;
 	forStack.pop_back();
 }
 
@@ -109,4 +109,37 @@ MemOffset ARMgr::localVarOffset() {
 
 MemOffset ARMgr::localTmpOffset() {
 	return 9 + paraNum + localNum;
+}
+
+MemOffset GlobalMgr::insert(Varname) {
+	assert(global.find(n) == global.end());
+	global[n] = localTmpOffset();
+	localNum ++;
+	return global[n];
+}
+
+virtual MemOffset ARMgr::insertArray(Varname n, std::vector<unsigned> d) {
+	assert(localVar.find(n) == localVar.end());
+	unsigned i,max,slot;
+	localVar[n] = localTmpOffset();
+	slot = 1;
+	max = d.size();
+	for (i = 0; i < max; i++) {
+		slot *= d[i];
+	}
+	localNum += slot;
+	return localVar[n];
+}
+
+virtual MemOffset GlobalMgr::insertArray(Varname n, std::vector<unsigned> d) {
+	assert(global.find(n) == global.end());
+	global[n] = localTmpOffset();
+	unsigned i,max,slot;
+	slot = 1;
+	max = d.size();
+	for (i = 0; i < max; i++) {
+		slot *= d[i];
+	}
+	localNum + =slot;
+	return global[n];
 }

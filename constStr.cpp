@@ -2,7 +2,7 @@
 #include <cassert>
 #include "constStr.h"
 
-unsigned AROffset = 0;
+unsigned AROffset = 1;
 
 unsigned ARhead() {
 	return AROffset;

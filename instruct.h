@@ -1,5 +1,8 @@
+#ifndef _INSTRUCT_H_
+#define _INSTRUCT_H_ 1
 #include <iostream>
 #include <vector>
+#include "memmgr.h"
 
 enum insCode {
 	IN,
@@ -44,25 +47,29 @@ public:
 	unsigned newIM(insCode i, int d1, int d2, int d3);
 	unsigned newIM(unsigned im_index); //goto ins
 	void assignAbsoluteAddr(unsigned index, unsigned addr);
-	void toTM(unsigned index, std::ostream);
+	void toTM(unsigned index, std::ostream&);
 };
 
 extern IMMgr imMgr;
 
 class Block {
-public:
+private:
 	std::vector<unsigned> im;
+public:
 	unsigned entrance();
-	void toTM(std::ostream);
+	void toTM(std::ostream&);
 	void add(unsigned i);
 	unsigned assignAbsoluteAddr(unsigned Offset); // return the next available ins slot
 };
 
 class ProcBlock {
-public:
+private:
 	std::vector<Block> blocks;
+public:
+	MemMgr memMgr;
+	ARMgr arMgr;
 	unsigned entrance();
-	void toTM(std::ostream);
+	void toTM(std::ostream&);
 	void add(Block b);
 	unsigned assignAbsoluteAddr(unsigned Offset);
 };
@@ -73,3 +80,4 @@ public:
 2. assign index
 3. elimate GOTO & to TM
 */
+#endif

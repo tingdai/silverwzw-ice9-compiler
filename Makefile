@@ -32,6 +32,12 @@ semantic$(FIX).o: semantic.cpp semantic.h parse.h
 main$(FIX).o: main.cpp semantic.h
 	g++ $(DEBUG) -c $< -o $@
 
+instruct$(FIX).o: instruct.cpp instruct.h
+	g++ $(DEBUG) -c $< -o $@
+
+memmgr$(FIX).o: memmgr.cpp memmgr.h
+	g++ $(DEBUG) -c $< -o $@
+
 clean:
 	rm -f *.o ice9.output
 

@@ -1133,3 +1133,23 @@ int semanticCheck(SemanticTree tr) {
 	procTab.checkDef = true;
 	return 0;
 }
+
+bool SemanticNode::gt(SemanticNode sn2) {
+	return ((unsigned)(sn1.data))>((unsigned)(sn2.data));
+}
+
+bool operator<=(SemanticNode sn1, SemanticNode sn2) {
+	return sn2.gt(sn1) || sn2.eq(sn1);
+}
+
+bool operator<(SemanticNode sn1, SemanticNode sn2) {
+	return sn2.gt(sn1);
+}
+
+bool operator>=(SemanticNode sn1, SemanticNode sn2) {
+	return sn1.gt(sn2) || sn1.eq(sn2);
+}
+
+bool operator>(SemanticNode sn1, SemanticNode sn2) {
+	return sn1.gt(sn2);
+}

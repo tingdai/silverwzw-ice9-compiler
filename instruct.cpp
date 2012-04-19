@@ -1,4 +1,4 @@
-#include <assert>
+#include <cassert>
 #include "instruct.h"
 
 /*
@@ -15,14 +15,14 @@ public:
 	unsigned newIM(insCode i, int d1, int d2, int d3);
 	unsigned newIM(unsigned im_index); //goto ins
 	void assignAbsoluteAddr(unsigned index, unsigned addr);
-	void toTM(unsigned index, std::ostream);
+	void toTM(unsigned index, std::ostream&);
 };
 */
 
 IMMgr imMgr;
 
 unsigned IMMgr::newIM(insCode i, int d1, int d2, int d3) {
-	IMdata imtmp;
+	IMData imtmp;
 
 	assert(i != GOTO);
 
@@ -37,7 +37,7 @@ unsigned IMMgr::newIM(insCode i, int d1, int d2, int d3) {
 }
 
 unsigned IMMgr::newIM(unsigned im_index) {
-	IMdata imtmp;
+	IMData imtmp;
 
 	imtmp.absoluteAddr = 0xFFFF;
 	imtmp.ins = GOTO;
@@ -53,13 +53,13 @@ void IMMgr::assignAbsoluteAddr(unsigned index, unsigned addr) {
 	imdata[index].absoluteAddr = addr;
 }
 
-void IMMgr::toTM(unsigned index, std::ostream os) {
-	IMdata im;
+void IMMgr::toTM(unsigned index, std::ostream &os) {
+	IMData im;
 
 	im = imdata[index];
 
 	os << ((unsigned)im.absoluteAddr) << ":\t";
-	if (imd.ins == GOTO) {
+	if (im.ins == GOTO) {
 		os << "LDC  7, " << ((unsigned)imdata[im.gotoIM].absoluteAddr) << "(0)\n" ;
 		return;
 	}
@@ -109,8 +109,8 @@ void IMMgr::toTM(unsigned index, std::ostream os) {
 	case ST:
 		os << "ST   ";
 		break;
-	case JTL:
-		os << "JTL  ";
+	case JLT:
+		os << "JLT  ";
 		break;
 	case JLE:
 		os << "JLE  ";
@@ -173,7 +173,7 @@ public:
 	std::vector<unsigned> im;
 	void add(unsigned i);
 	unsigned entrance();
-	void toTM(std::ostream);
+	void toTM(std::ostream&);
 	unsigned assignAbsoluteAddr(unsigned Offset); // return the next available ins slot
 };
 */
@@ -187,7 +187,7 @@ unsigned Block::entrance() {
 	return im[0];
 }
 
-void Block::toTM(std::ostream os) {
+void Block::toTM(std::ostream &os) {
 	unsigned i,max;
 	max = im.size();
 
@@ -212,7 +212,7 @@ public:
 	std::vector<Block> blocks;
 	unsigned entrance();
 	void add(Block b);
-	void toTM(std::ostream);
+	void toTM(std::ostream&);
 	unsigned assignAbsoluteAddr(unsigned Offset);
 };
 */
@@ -226,7 +226,7 @@ void ProcBlock::add(Block b) {
 	blocks.push_back(b);
 }
 
-void ProbBlock::toTM(std::ostream os) {
+void ProcBlock::toTM(std::ostream &os) {
 	unsigned i,max;
 	max = blocks.size();
 

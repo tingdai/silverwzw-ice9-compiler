@@ -1,3 +1,5 @@
+#ifndef _MEMMGR_H_
+#define _MEMMGR_H_ 1
 #include <vector>
 #include <map>
 #include <string>
@@ -14,29 +16,34 @@ struct VMPair {
 extern std::map<Varname, MemOffset> globalVar;
 extern std::map<SemanticNode, MemOffset> globalTmp;
 
-class MemMgr {
+class ARMgr {
 private:
+	unsigned ARlength;
+	unsigned paraNum;
+	unsigned localNum;
+	unsigned faNum;
 	std::map<Varname, MemOffset> &global;
 	std::map<Varname, MemOffset>  localVar;
 	std::map<SemanticNode, MemOffset> localTmp;
 	std::vector<VMPair> forStack;
 public:
-	MemMgr();
-	MemOffset lookup(Varname);
-	MemOffset lookup(SemanticNode exp);
-};
-
-class ARMgr {
-private:
-	unsigned ARlength;
-	MemOffset ret;
-	MenOffset para;
-	Memoffset reg;
-	MemOffset local;
-	MemOffset localTmp;
-public:
 	ARMgr();
 	unsigned length();
-	MemOffset allocMen();
-	void freeTemp();
+	MemOffset returnValueOffset();
+	MemOffset parametersOffset();
+	MemOffset savedRegOffset();
+	MemOffset localVarOffset();
+	MemOffset localTmpOffset();
+	MemOffset lookupVar(Varname);
+	MemOffset lookupExp(SemanticNode exp);
+	MemOffset lookupFa(Varname);
+	MemOffset pushPara(Varname);
+	MemOffset insert(Varname);
+	MemOffset insert(SemanticNode exp);
+	MemOffset pushFa(Varname);
+	void popFa(Varname);
+	void freeTmp();
+	bool isFa(Varname);
 };
+
+#endif

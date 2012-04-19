@@ -13,6 +13,7 @@ protected:
 public:
 	static bool isfree;
 	bool eq(SemanticNode sn2);
+	bool gt(SemanticNode sn2);
 	SemanticNode();
 	NodeType type();
 	bool isFree();
@@ -51,6 +52,10 @@ bool operator==(Ice9Type t1, Ice9Type t2);
 bool operator!=(Ice9Type t1, Ice9Type t2);
 bool operator==(SemanticNode sn1, SemanticNode sn2);
 bool operator!=(SemanticNode sn1, SemanticNode sn2);
+bool operator<=(SemanticNode sn1, SemanticNode sn2);
+bool operator<(SemanticNode sn1, SemanticNode sn2);
+bool operator>=(SemanticNode sn1, SemanticNode sn2);
+bool operator>(SemanticNode sn1, SemanticNode sn2);
 
 class Ice9Proc {
 private:

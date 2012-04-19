@@ -116,9 +116,15 @@ void nodeCheckIn(SemanticNode nd) {
 		break;
 	}
 	case ASTN_write: //merge this two
-	case ASTN_writes: //merge this two
-		if (getTypeGeneral(nd.getChild(ASTN_exp, 0)) != INT && getTypeGeneral(nd.getChild(ASTN_exp,0)) != STR) {
+	case ASTN_writes: {//merge this two 
+		Ice9Type tp;
+		tp = getTypeGeneral(nd.getChild(ASTN_exp, 0));
+		if (tp != INT && tp != STR) {
 			semanticError("Only int and string is valid type in write statement",nd.line());
+		}
+		if (tp == INT) {
+			nd.reload(ice9int);
+		}
 		}
 		break;
 	case ASTN_varlist:{

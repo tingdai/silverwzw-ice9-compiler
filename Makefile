@@ -38,6 +38,9 @@ instruct$(FIX).o: instruct.cpp instruct.h
 memmgr$(FIX).o: memmgr.cpp memmgr.h
 	g++ $(DEBUG) -c $< -o $@
 
+conststr$(FIX).o: constStr.cpp constStr.h
+	g++ $(DEBUG) -c $< -o $@
+
 clean:
 	rm -f *.o ice9.output
 

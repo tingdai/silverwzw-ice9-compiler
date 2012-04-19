@@ -5,16 +5,22 @@
 #include <string>
 struct TJ_TP{
 	std::string base;
-	vector<unsigned> dim;
+	std::vector<unsigned> dim;
 };
+
+typedef std::map<std::string, TJ_TP> _INTER_TYPE1; //this line is for g++ to recognize the defination, stupit g++.......
+
+typedef std::map<std::string,_INTER_TYPE1> IndirectTable;
 
 class TypeJumper {
 private:
-	std::map<std::string,std::map<std::string, TJ_TP>> indirectTable;
+	IndirectTable indirectTable;
 public:
 	void addType(std::string procN, std::string typeN, std::string baseTPN);
 	void pushDim(std::string procN, std::string tyepN, unsigned d);
-	vector<unsigned> lookupDim(std::string procN, std::string typeN);
+	std::vector<unsigned> lookupDim(std::string procN, std::string typeN);
 };
+
+extern TypeJumper typeJumper;
 #endif
 

@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include "typejumper.h"
-TypeJumper typerJumper;
+TypeJumper typeJumper;
 
 void TypeJumper::addType(std::string procN, std::string typeN, std::string baseTypeN) {
 	TJ_TP tmp;
@@ -14,7 +14,7 @@ void TypeJumper::pushDim(std::string procN, std::string typeN, unsigned d) {
 	indirectTable[procN][typeN].dim.push_back(d);
 }
 
-vector<unsigned> TypeJumper::lookupDim(std::string currentProc, std::string typeN) {
+std::vector<unsigned> TypeJumper::lookupDim(std::string currentProc, std::string typeN) {
 	if (indirectTable[currentProc].find(typeN) != indirectTable[currentProc].end()) {
 		if (indirectTable[currentProc][typeN].base == "0") {
 			return indirectTable[currentProc][typeN].dim;
@@ -22,7 +22,7 @@ vector<unsigned> TypeJumper::lookupDim(std::string currentProc, std::string type
 		else {
 			std::vector<unsigned> basev, thisv;
 			unsigned i,max;
-			basev = lookupDimReverse(currentProc, indirectTable[currentProc][typeN].base);
+			basev = lookupDim(currentProc, indirectTable[currentProc][typeN].base);
 			thisv = indirectTable[currentProc][typeN].dim;
 			max = basev.size();
 			for (i = 0; i < max; i++) {
@@ -38,7 +38,7 @@ vector<unsigned> TypeJumper::lookupDim(std::string currentProc, std::string type
 		else {
 			std::vector<unsigned> basev, thisv;
 			unsigned i,max;
-			basev = lookupDimReverse("0", indirectTable["0"][typeN].base);
+			basev = lookupDim("0", indirectTable["0"][typeN].base);
 			thisv = indirectTable["0"][typeN].dim;
 			max = basev.size();
 			for (i = 0; i < max; i++) {

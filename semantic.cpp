@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include "typejumper.h"
 #include "semantic.h"
 extern "C" {
 #include "ice9.tab.h"
@@ -140,8 +141,30 @@ void nodeCheckIn(SemanticNode nd) {
 	}
 	case ASTN_type: {
 		Ice9Type tp;
-		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
-		typeTab.push(nd.getChild(ASTN_L_id, 0).idValue(), tp, current_scope, nd.line());
+		char *s,*idV;
+		SemanticNode tpdes;
+		unsigned i,max;
+		tpdes = nd.getChild(ASTN_typedes, 0);
+		tp = getTypeGeneral(tpdes);
+		idV = nd.getChild(ASTN_L_id).idValue();
+		typeTab.push(idV, tp, current_scope, nd.line());
+		if (current_scope.type() == ASTN_proc) {
+			s = current_scope.getChild(ASTN_L_id,0).idValue();
+		}
+		else {
+			s = "0";
+		}
+		tp = getTypeGeneral(tpdes.getChild(ASTN_L_id, 0));
+		if (tp == INT || tp == BOOLEAN || tp == STR) {
+			typeJumper.addType(s, idV, "0");
+		}
+		else {
+			typeJumper.addType(s, idV, tpdes.getChild(ASTN_L_id,0).idValue());
+		}
+		max = tpdes.getChildCount(ASTN_L_int);
+		for (i = 0; i < max; i++) {
+			typeJumper.pushDim(s, idV, tpdes.getChild(ASTN_L_int, i).intValue());
+		}
 		break;
 	}
 	case ASTN_branch:

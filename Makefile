@@ -5,7 +5,7 @@ FIX =
 LIB	= -lfl
 SRC	= ice9.l ice9.y
 
-ice9:	ice9.yy$(FIX).o ice9.tab$(FIX).o ast$(FIX).o semantic$(FIX).o main$(FIX).o
+ice9:	ice9.yy$(FIX).o ice9.tab$(FIX).o ast$(FIX).o semantic$(FIX).o main$(FIX).o typejumper.o
 	g++ -o $@ $^ $(LIB)
 
 ice9.tab.c: ice9.y
@@ -39,6 +39,9 @@ memmgr$(FIX).o: memmgr.cpp memmgr.h
 	g++ $(DEBUG) -c $< -o $@
 
 conststr$(FIX).o: constStr.cpp constStr.h
+	g++ $(DEBUG) -c $< -o $@
+
+typejumper$(FIX).o: typejumper.cpp typejumper.h
 	g++ $(DEBUG) -c $< -o $@
 
 clean:

@@ -131,11 +131,32 @@ void nodeCheckIn(SemanticNode nd) {
 	case ASTN_varlist:{
 		SemanticNode idlst;
 		Ice9Type tp;
+		SemanticNode typedesnd;
+		typedesnd = nd.getChild(ASTN_typedes, 0);
 		idlst = nd.getChild(ASTN_idlist, 0);
-		tp = getTypeGeneral(nd.getChild(ASTN_typedes, 0));
+		tp = getTypeGeneral(typedesnd);
 		j = idlst.getChildCount(ASTN_L_id);
 		for (i = 0; i < j; i++) {
+			char *s,*idn;
 			varTab.push(idlst.getChild(ASTN_L_id, i).idValue(), tp, current_scope, nd.line());
+			if (current_scope.type() == ASTN_proc) {
+				s = current_scope.getChild(ASTN_L_id, 0).idValue();
+			}
+			else{
+				s = "0";
+			}
+			idn = idlst.getChild(ASTN_L_id, i).idValue();
+			if (typeTab.getType(typedesnd.getChild(ASTN_L_id, 0),nd.line()).dim != 0) {
+				varJumper.addType(s, idn, typedesnd.getChild(ASTN_L_id, 0).idValue());
+			}
+			else {
+				varJumper.addType(s, idn, "0");
+			}
+			unsigned counter, maxcounter;
+			maxcounter = typedesnd.getChildCount(ASTN_L_int);
+			for (counter = 0; counter < maxcounter; counter++) {
+				varJumper.pushDim(s, idn, typedesnd.getChild(ASTN_L_int, counter).intValue());
+			}
 		}
 		break;
 	}
@@ -622,6 +643,7 @@ Ice9Proc *ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 			}
 			if (theProc -> procReturn.isvoid == false) {
 				varTab.push(procName, theProc->procReturn.type, nd, nd.line());
+				varJumper.addType(procName, procName,"0");
 			}
 			if (nd.getChildCount(ASTN_declistx) > 0) {
 				SemanticNode N_declistx;
@@ -640,6 +662,12 @@ Ice9Proc *ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 						SemanticNode N_id;
 						N_id = N_idlist.getChild(ASTN_L_id, j);
 						varTab.push(N_id.idValue(), currentType, nd, N_idlist.line());
+						if (currentType.dim == 0) {
+							varJumper.addType(procName, N_id.idValue(),"0");
+						}
+						else {
+							varJumper.addType(procName, N_id.idValue(), N_declist.getChild(ASTN_L_id,0).idValue());
+						}
 					}
 				}
 			}
@@ -700,6 +728,7 @@ Ice9Proc *ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 		}
 		if (newProc -> procReturn.isvoid == false) {
 			varTab.push(procName, newProc->procReturn.type, nd, nd.line());
+			varJumper.addType(procName, procName, "0");
 		}
 		if (nd.getChildCount(ASTN_declistx) > 0) {
 			SemanticNode N_declistx;
@@ -718,6 +747,12 @@ Ice9Proc *ProcTab::ProcessProcAndForwardNode(SemanticNode nd) {
 					SemanticNode N_id;
 					N_id = N_idlist.getChild(ASTN_L_id, j);
 					varTab.push(N_id.idValue(), currentType, nd, N_idlist.line());
+					if (currentType.dim == 0) {
+						varJumper.addType(procName, N_id.idValue(),"0");
+					}
+					else {
+						varJumper.addType(procName, N_id.idValue(), N_declist.getChild(ASTN_L_id,0).idValue());
+					}
 					newProc -> addArg(currentType);
 				}
 			}

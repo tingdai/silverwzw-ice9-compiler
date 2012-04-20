@@ -22,5 +22,6 @@ public:
 };
 
 extern TypeJumper typeJumper;
+extern TypeJumper varJumper;
 #endif
 

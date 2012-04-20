@@ -41,7 +41,7 @@ public:
 	virtual MemOffset insertArray(Varname, std::vector<unsigned>);
 	MemOffset insert(SemanticNode exp);
 	MemOffset pushFa(Varname);
-	void popFa(Varname);
+	void popFa();
 	void freeTmp();
 	bool isFa(Varname);
 };

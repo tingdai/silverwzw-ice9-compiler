@@ -1,8 +1,8 @@
-#include <map>
 #include <vector>
 #include <string>
 #include "typejumper.h"
 TypeJumper typeJumper;
+TypeJumper varJumper;
 
 void TypeJumper::addType(std::string procN, std::string typeN, std::string baseTypeN) {
 	TJ_TP tmp;
@@ -22,7 +22,7 @@ std::vector<unsigned> TypeJumper::lookupDim(std::string currentProc, std::string
 		else {
 			std::vector<unsigned> basev, thisv;
 			unsigned i,max;
-			basev = lookupDim(currentProc, indirectTable[currentProc][typeN].base);
+			basev = typeJumper.lookupDim(currentProc, indirectTable[currentProc][typeN].base);
 			thisv = indirectTable[currentProc][typeN].dim;
 			max = basev.size();
 			for (i = 0; i < max; i++) {
@@ -31,14 +31,14 @@ std::vector<unsigned> TypeJumper::lookupDim(std::string currentProc, std::string
 			return thisv;
 		}
 	}
-	else {
+	else if(currentProc != "0"){
 		if (indirectTable["0"][typeN].base == "0") {
 			return indirectTable["0"][typeN].dim;
 		}
 		else {
 			std::vector<unsigned> basev, thisv;
 			unsigned i,max;
-			basev = lookupDim("0", indirectTable["0"][typeN].base);
+			basev = typeJumper.lookupDim("0", indirectTable["0"][typeN].base);
 			thisv = indirectTable["0"][typeN].dim;
 			max = basev.size();
 			for (i = 0; i < max; i++) {
@@ -47,6 +47,8 @@ std::vector<unsigned> TypeJumper::lookupDim(std::string currentProc, std::string
 			return thisv;
 		}
 	}
+	std::vector<unsigned> emptyv;
+	return emptyv;
 }
 
 

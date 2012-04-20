@@ -23,7 +23,7 @@ void nodecheck(SemanticNode nd) {
 			strConst tmp;
 			tmp.str = nd.strValue();
 			tmp.offset = AROffset;
-			AROffset += tmp.str.size();
+			AROffset += tmp.str.size() + 1;
 			strTab.push_back(tmp);
 		}
 	}
@@ -54,6 +54,7 @@ void constTable2TM(std::ostream os) {
 	unsigned max,i;
 	max = strTab.size();
 	for (i = 0; i < max; i++) {
+		os << ".DATA " << (strTab[i].str.length()) << '\n';
 		os << ".SDATA \"" << (strTab[i].str) << "\"\n";
 	}
 }

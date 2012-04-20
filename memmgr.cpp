@@ -21,7 +21,7 @@ MemOffset ARMgr::pushFa(Varname n) {
 	return faNum - 2;
 }
 
-void ARMgr::popFa(Varname) {
+void ARMgr::popFa() {
 	faNum -= 2;
 	forStack.pop_back();
 }
@@ -127,7 +127,7 @@ virtual MemOffset ARMgr::insertArray(Varname n, std::vector<unsigned> d) {
 	for (i = 0; i < max; i++) {
 		slot *= d[i];
 	}
-	localNum += slot;
+	localNum += ttlslot;
 	return localVar[n];
 }
 
@@ -140,6 +140,6 @@ virtual MemOffset GlobalMgr::insertArray(Varname n, std::vector<unsigned> d) {
 	for (i = 0; i < max; i++) {
 		slot *= d[i];
 	}
-	localNum + =slot;
+	localNum += ttlslot;
 	return global[n];
 }

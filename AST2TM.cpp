@@ -11,8 +11,7 @@
 
 std::map<std::string, ProcBlock> procBlocks;
 std::vector<Block> gBlocks;
-std::vector<unsigned> currentReturnTarget;
-std::vector<unsigned> currentBreakTraget;
+std::vector<unsigned> currentBreakTarget;
 
 unsigned buildBlock(ARMgr &, SemanticNode, std::vector<Block> &);
 
@@ -30,9 +29,10 @@ void AST2TM(std::ostream &os) {
 	tmpBlock.add(imMgr.newIM(LDC, 5, 0, 0));
 	tmpBlock.add(imMgr.newIM(LD , 5, 0, 5));
 	exitIM = imMgr.newIM(HALT,0, 0, 0);
-	currentReturnTarget.push_back(exitIM);
 
 	en = buildMain(gARMgr, tr, gBlocks, exitIM);
+	tmpBlock.add(imMgr.newIM(LDA,4,2,7));
+	tmpBlock.add(imMgr.newIM(ST,4,gARMgr.savedRegOffset()+7,6));
 
 	tmpBlock.add(imMgr.newIM(en));
 	tmpBlock.add(exitIM);
@@ -127,7 +127,7 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 		currentBlock.add(imMgr.newIM(HALT,0,0,0));
 		break;
 	case ASTN_return:
-		currentBlock.add(imMgr.newIM(currentReturnTarget[currentReturnTarget.size() - 1]));
+		currentBlock.add(imMgr.newIM(LD, 7,arMgr.savedRegOffset() + 7, 6));
 		break;
 	case ASTN_write:
 	case ASTN_writes:
@@ -162,7 +162,7 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 		std::vector<unsigned> v;
 		lvl = sn.getChild(ASTN_lvalue, 0);
 		v = varJumper.lookupDim(lvl.getChild(ASTN_L_id, 0).idValue());
-		currentBlock.add(imMgr.newIM(LD, 4, arMgr.lookupVar(lvl.getChild(ASTN_L_id, 0).idValue()),6));
+		currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(lvl.getChild(ASTN_L_id, 0).idValue()),6));
 		unsigned i,j,max,k,size;
 		size = 1;
 		max = v.size();
@@ -170,17 +170,22 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 			size *= v[i];
 		}
 		max = lvl.getChildCount(ASTN_exp);
+		unsigned of;
+		of = arMgr.insert(lvl);
 		for (i = 0; i < max; i++) {
 			size /= v[i];
+			currentBlock.add(imMgr.newIM(ST,4,of,6));
 			attachExpIM(arMgr, lvl.getChild(ASTN_exp, i), currentBlock, currentBlockVector);
+			currentBlock.add(imMgr.newIM(LD, 4, of, 6));
 			currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(lvl.getChild(ASTN_exp, i)), 6));
-			currentBlock.add(imMge.newIM(LDC,2,size,0));
+			currentBlock.add(imMgr.newIM(LDC,2,size,0));
 			currentBlock.add(imMgr.newIM(MUL,3,3,2));
-			currentBlock.add(imMge.newIM(ADD,4,4,3));
-			arMgr.freeTmp();
+			currentBlock.add(imMgr.newIM(ADD,4,4,3));
 		}
+		currentBlock.add(imMgr.newIM(ST,4,of,6));
 		attachExpIM(arMgr,sn.getChild(ASTN_exp, 0), currentBlock, currentBlockVector);
 		currentBlock.add(imMgr.newIM(LD, 0, arMgr.lookupExp(sn.getChild(ASTN_exp, 0)), 6));
+		currentBlock.add(imMgr.newIM(LD, 4, of, 6));
 		arMgr.freeTmp();
 		currentBlock.add(imMgr.newIM(ST,0,0,4));
 		break;
@@ -237,7 +242,246 @@ void attachLoopIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vect
 	currentBlock.add(loopExit);
 }
 
-void attachExpIM();
+void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector) {
+	assert(nd.type() == ASTN_exp);
+	SemanticNode sn;
+	MemOffset m;
+	sn = nd.getChild(0);
+	m = arMgr.insertExp(nd);
+	switch(sn.type()) {
+	case ASTN_lvalue: 
+		if (arMgr.isFa(sn.getChild(ASTN_L_id))) {
+			currentBlock.add(imMgr.newIM(LD, 4,));
+		}
+		else {
+			std::vector<unsigned> v;
+			v = varJumper.lookupDim(sn.getChild(ASTN_L_id, 0).idValue());
+			currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(sn.getChild(ASTN_L_id, 0).idValue()),6));
+			unsigned i,j,max,k,size;
+			size = 1;
+			max = v.size();
+			for (i = 0; i < max; i++) {
+				size *= v[i];
+			}
+			of = arMgr.insert(sn);
+			max = sn.getChildCount(ASTN_exp);
+			for (i = 0; i < max; i++) {
+				size /= v[i];
+				currentBlock.add(imMgr.newIM(ST,4,of,6));
+				attachExpIM(arMgr, sn.getChild(ASTN_exp, i), currentBlock, currentBlockVector);
+				currentBlock.add(imMgr.newIM(LD,4,of,6));
+				currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(sn.getChild(ASTN_exp, i)), 6));
+				currentBlock.add(imMgr.newIM(LDC,2,size,0));
+				currentBlock.add(imMgr.newIM(MUL,3,3,2));
+				currentBlock.add(imMgr.newIM(ADD,4,4,3));
+			}
+		}
+		currentBlock.add(imMgr.newIM(LD,4,0,4));
+		currentBlock.add(imMgr.newIM(ST,4,m,6));
+		break;
+	case ASTN_L_int:
+		currentBlock.add(imMgr.newIM(LDC,0,sn.intValue(),0));
+		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		break;
+	case ASTN_L_bool:
+		currentBlock.add(imMgr.newIM(LDC,0,sn.boolValue()?1:0,0));
+		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		break;
+	case ASTN_L_string:
+		currentBlock.add(imMgr.newIM(LDC,0,lookupStr(sn.strValue()),0));
+		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		break;
+	case ASTN_umin:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD ,1,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),0));
+		if(sn.reload() == ice9int) {
+			currentBlock.add(imMgr.newIM(LDC,0,0,0));
+			currentBlock.add(imMgr.newIM(SUB,0,0,1));
+		}
+		else {
+			currentBlock.add(imMgr.newIM(LDC,0,1,0));
+			currentBlock.add(imMgr.newIM(JEQ,1,1,7));
+			currentBlock.add(imMgr.newIM(LDC,0,0,0));
+		}
+		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		break;
+	case ASTN_quest:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD ,1,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),0));
+		currentBlock.add(imMgr.newIM(ST,1,m,6));
+		break;
+	case ASTN_proccall:{
+		ProcBlock &pb = procBlocks[sn.getChild(ASTN_L_id,0).idValue()];
+		unsigned i,max,j,k,newAROffset;
+		max = sn.getChildCount(ASTN_exp);
+		for(i = 0; i < max; i++) {
+			attachExpIM(arMgr, sn.getChild(ASTN_exp,i), currentBlock, currentBlockVector);
+		}
+		newAROffset = arMgr.length();
+		currentBlock.add(imMgr.newIM(LDA,0,newAROffset,6));//reg[6] is base addr of caller AR, reg[0] is base addr of callee AR
+		for(i = 0; i < max; i++) {
+			currentBlock.add(imMgr.newIM(LD,2,arMgr.lookupExp(sn.getChild(ASTN_exp,i)),6));
+			currentBlock.add(imMgr.newIM(ST,2,pb.arMgr.parametersOffset() + i,0));
+		}
+		for(i = 0; i < 7; i++) {
+			currentBlock.add(imMgr.newIM(ST ,i,pb.arMgr.savedRegOffset() + i,0));
+		}
+		currentBlock.add(imMgr.newIM(LDA,5,arMgr.currentForTop(),5));
+		currentBlock.add(imMgr.newIM(LDA,6,0,0));
+		currentBlock.add(imMgr.newIM(LDA,2,2,7));
+		currentBlock.add(imMgr.newIM(ST ,2,pb.arMgr.savedRegOffset() + 7,0));
+		currentBlock.add(imMgr.newIM(pb.entrance()));
+		for(i = 0; i < 7; i++) {
+			currentBlock.add(imMgr.newIM(LD ,i,pb.arMgr.savedRegOffset() + i,6)); //when return, reg[6] is base addr of callee AR
+		}
+		//after LD reg[6] will recover and become base addr of caller AR
+		//and reg[0] will become callee AR
+		currentBlock.add(imMgr.newIM(LD,4,pb.arMgr.returnValueOffset(),0));
+		currentBlock.add(imMgr.newIM(ST,4,m,6));
+		break;
+	}
+	case ASTN_plus:{
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		unsigned ex;
+		ex = imMgr.newIM(ST,3,m,6);
+		if (sn.reload() == ice9int) {
+			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+			currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+			currentBlock.add(imMgr.newIM(ADD,3,1,0));
+		}
+		else { //short cut is used
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+			currentBlock.add(imMgr.newIM(JEQ,0,2,7));
+			currentBlock.add(imMgr.newIM(LDC,3,1,0));
+			currentBlock.add(imMgr.newIM(ex));
+			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+			currentBlock.add(imMgr.newIM(JEQ,0,2,7));
+			currentBlock.add(imMgr.newIM(LDC,3,1,0));
+			currentBlock.add(imMgr.newIM(ex));
+			currentBlock.add(imMgr.newIM(LDC,3,0,0));
+		}
+		currentBlock.add(ex);
+		break;
+	}
+	case ASTN_minus:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1));
+		currentBlock.add(imMgr.newIM(ST,2,m,6));
+		break;
+	case ASTN_mod:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(DIV,2,0,1));
+		currentBlock.add(imMgr.newIM(MUL,3,2,1));
+		currentBlock.add(imMgr.newIM(SUB,3,0,3));
+		currentBlock.add(imMgr.newIM(ST ,3,m,6));
+		break;
+	case ASTN_star:{
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		unsigned ex;
+		ex = imMgr.newIM(ST,3,m,6);
+		if (sn.reload() == ice9int) {
+			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+			currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+			currentBlock.add(imMgr.newIM(MUL,3,1,0));
+		}
+		else { //short cut is used
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+			currentBlock.add(imMgr.newIM(JNE,0,2,7));
+			currentBlock.add(imMgr.newIM(LDC,3,0,0));
+			currentBlock.add(imMgr.newIM(ex));
+			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+			currentBlock.add(imMgr.newIM(JNE,0,2,7));
+			currentBlock.add(imMgr.newIM(LDC,3,0,0));
+			currentBlock.add(imMgr.newIM(ex));
+			currentBlock.add(imMgr.newIM(LDC,3,1,0));
+		}
+		currentBlock.add(ex);
+		break;
+	}
+	case ASTN_div:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(DIV,2,0,1));
+		currentBlock.add(imMgr.newIM(ST,2,m,6));
+		break;
+	case ASTN_eq:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0));
+		currentBlock.add(imMgr.newIM(JEQ,2,1,7));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0));
+		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		break;
+	case ASTN_neq:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0));
+		currentBlock.add(imMgr.newIM(JEQ,2,1,7));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0));
+		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		break;
+	case ASTN_gt:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0));
+		currentBlock.add(imMgr.newIM(JGT,2,1,7));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0));
+		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		break;
+	case ASTN_ge:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0));
+		currentBlock.add(imMgr.newIM(JGE,2,1,7));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0));
+		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		break;
+	case ASTN_lt:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0));
+		currentBlock.add(imMgr.newIM(JLT,2,1,7));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0));
+		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		break;
+	case ASTN_le:
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
+		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0));
+		currentBlock.add(imMgr.newIM(JLE,2,1,7));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0));
+		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		break;
+	}
+}
 
 std::vector<unsigned> typeChecker(std::string currentProc,SemanticNode varlistnd) {
 	char *tpName;

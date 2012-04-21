@@ -44,6 +44,7 @@ public:
 	void popFa();
 	void freeTmp();
 	bool isFa(Varname);
+	MemOffset currentForTop();
 };
 
 class GlobalARMgr : public ARMgr {

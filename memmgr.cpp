@@ -82,6 +82,10 @@ MemOffset ARMgr::insert(SemanticNode exp) {
 	return ARlength++;
 }
 
+MemOffset ARMgr::currentForTop() {
+	return forStack[forStack.size()-1].offset;
+}
+
 void ARMgr::freeTmp() {
 	localTmp.clear();
 	ARlength = 1 + paraNum + 8 + localNum;

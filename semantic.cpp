@@ -126,6 +126,9 @@ void nodeCheckIn(SemanticNode nd) {
 		if (tp == INT) {
 			nd.reload(ice9int);
 		}
+		if (tp == STR) {
+			nd.reload(ice9str);
+		}
 		}
 		break;
 	case ASTN_varlist:{
@@ -316,17 +319,17 @@ char *SemanticNode::idValue() {
 }
 
 char *SemanticNode::strValue() {
-	assert(isfree == false && data != NULL && data -> sym == ASTN_L_id);
+	assert(isfree == false && data != NULL && data -> sym == ASTN_L_string);
 	return data -> value.str;
 }
 
 bool SemanticNode::boolValue() {
-	assert(isfree == false && data != NULL && data -> sym == ASTN_L_id);
+	assert(isfree == false && data != NULL && data -> sym == ASTN_L_bool);
 	return (data -> value.b == TRUE) ? true : false;
 }
 
 int SemanticNode::intValue() {
-	assert(isfree == false && data != NULL && data -> sym == ASTN_L_id);
+	assert(isfree == false && data != NULL && data -> sym == ASTN_L_int);
 	return data -> value.num;
 }
 
@@ -1245,19 +1248,27 @@ bool operator>(SemanticNode sn1, SemanticNode sn2) {
 void SemanticNode::reload(Ice9BaseType tp) {
 	if (tp == ice9int) {
 		data -> reloadType = RELOAD_INT;
+		return;
 	}
-	else if (tp == ice9bool) {
+	if (tp == ice9bool) {
 		data -> reloadType = RELOAD_BOOL;
+		return;
 	}
-	assert(false);
+	if (tp == ice9str) {
+		data -> reloadType = RELOAD_STR;
+		return;
+	}
 }
 
 Ice9BaseType SemanticNode::reload() {
 	if (data -> reloadType == RELOAD_INT) {
 		return ice9int;
 	}
-	else if (data -> reloadType == RELOAD_BOOL) {
+	if (data -> reloadType == RELOAD_BOOL) {
 		return ice9bool;
+	}
+	if (data -> reloadType == RELOAD_STR) {
+		return ice9str;
 	}
 	assert(false);
 }

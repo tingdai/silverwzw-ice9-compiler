@@ -2,6 +2,7 @@
 #define _INSTRUCT_H_ 1
 #include <iostream>
 #include <vector>
+#include <string>
 #include "memmgr.h"
 
 enum insCode {
@@ -38,6 +39,7 @@ struct IMData {
 	insCode ins;
 	int para[3];
 	unsigned gotoIM;
+	std::string comment;
 };
 
 class IMMgr {
@@ -46,6 +48,8 @@ private:
 public:
 	unsigned newIM(insCode i, int d1, int d2, int d3);
 	unsigned newIM(unsigned im_index); //goto ins
+	unsigned newIM(insCode i, int d1, int d2, int d3, std::string);
+	unsigned newIM(unsigned im_index, std::string); //goto ins
 	void assignAbsoluteAddr(unsigned index, unsigned addr);
 	void toTM(unsigned index, std::ostream&);
 };

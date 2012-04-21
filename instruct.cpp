@@ -21,7 +21,7 @@ public:
 
 IMMgr imMgr;
 
-unsigned IMMgr::newIM(insCode i, int d1, int d2, int d3) {
+unsigned IMMgr::newIM(insCode i, int d1, int d2, int d3, std::string c) {
 	IMData imtmp;
 
 	assert(i != GOTO);
@@ -32,11 +32,13 @@ unsigned IMMgr::newIM(insCode i, int d1, int d2, int d3) {
 	imtmp.para[1] = d2;
 	imtmp.para[2] = d3;
 	imtmp.gotoIM = 0xFFFF;
+	imtmp.comment = c;
 
 	imdata.push_back(imtmp);
+	return imdata.size() - 1;
 }
 
-unsigned IMMgr::newIM(unsigned im_index) {
+unsigned IMMgr::newIM(unsigned im_index, std::string c) {
 	IMData imtmp;
 
 	imtmp.absoluteAddr = 0xFFFF;
@@ -45,10 +47,19 @@ unsigned IMMgr::newIM(unsigned im_index) {
 	imtmp.para[1] = 0xFFFF;
 	imtmp.para[2] = 0xFFFF;
 	imtmp.gotoIM = im_index;
+	imtmp.comment = c;
 
 	imdata.push_back(imtmp);
+	return imdata.size() - 1;
 }
 
+unsigned IMMgr::newIM(insCode i, int d1, int d2, int d3) {
+	return newIM(i,d1,d2,d3,"");
+}
+
+unsigned IMMgr::newIM(unsigned im_index) {
+	return newIM(im_index,"");
+}
 void IMMgr::assignAbsoluteAddr(unsigned index, unsigned addr) {
 	imdata[index].absoluteAddr = addr;
 }
@@ -60,72 +71,72 @@ void IMMgr::toTM(unsigned index, std::ostream &os) {
 
 	os << ((unsigned)im.absoluteAddr) << ":\t";
 	if (im.ins == GOTO) {
-		os << "LDC  7, " << ((unsigned)imdata[im.gotoIM].absoluteAddr) << "(0)\n" ;
+		os << "LDC   7, " << ((unsigned)imdata[im.gotoIM].absoluteAddr) << "(0)\t*"<<im.comment<<"\n" ;
 		return;
 	}
 	switch (im.ins) {
 	case HALT:
-		os << "HALT ";
+		os << "HALT  ";
 		break;
 	case IN:
-		os << "IN   ";
+		os << "IN    ";
 		break;
 	case OUT:
-		os << "OUT  ";
+		os << "OUT   ";
 		break;
 	case INB:
-		os << "INB  ";
+		os << "INB   ";
 		break;
 	case OUTB:
-		os << "OUTB ";
+		os << "OUTB  ";
 		break;
 	case OUTC:
-		os << "OUTC ";
+		os << "OUTC  ";
 		break;
 	case OUTNL:
-		os << "OUTNL";
+		os << "OUTNL ";
 		break;
 	case ADD:
-		os << "ADD  ";
+		os << "ADD   ";
 		break;
 	case MUL:
-		os << "MUL  ";
+		os << "MUL   ";
 		break;
 	case DIV:
-		os << "DIV  ";
+		os << "DIV   ";
 		break;
 	case SUB:
-		os << "SUB  ";
+		os << "SUB   ";
 		break;
 	case LDC:
-		os << "LDC  ";
+		os << "LDC   ";
 		break;
 	case LDA:
-		os << "LDA  ";
+		os << "LDA   ";
 		break;
 	case LD:
-		os << "LD   ";
+		os << "LD    ";
 		break;
 	case ST:
-		os << "ST   ";
+		os << "ST    ";
 		break;
 	case JLT:
-		os << "JLT  ";
+		os << "JLT   ";
 		break;
 	case JLE:
-		os << "JLE  ";
+		os << "JLE   ";
 		break;
 	case JEQ:
-		os << "JEQ  ";
+		os << "JEQ   ";
 		break;
 	case JNE:
-		os << "JNE  ";
+		os << "JNE   ";
 		break;
 	case JGE:
-		os << "JGE  ";
+		os << "JGE   ";
 		break;
 	case JGT:
-		os << "JGT  ";
+		os << "JGT   ";
 		break;
 	default:
 		assert(false);
@@ -133,13 +144,14 @@ void IMMgr::toTM(unsigned index, std::ostream &os) {
 	switch (im.ins) {
 	case HALT:
 	case OUTNL:
+		os << "0, 0, 0";
 		break;
 	case IN:
 	case OUT:
 	case INB:
 	case OUTB:
 	case OUTC:
-		os << ((int)im.para[0]);
+		os << ((int)im.para[0]) << ", 0, 0";
 		break;
 	case ADD:
 	case SUB:
@@ -165,7 +177,7 @@ void IMMgr::toTM(unsigned index, std::ostream &os) {
 	default:
 		assert(false);
 	}
-	os << '\n';
+	os << "\t*" << im.comment << '\n';
 }
 /*
 class Block {

@@ -57,7 +57,8 @@ typedef enum {TRUE, FALSE} BOOL;
 typedef enum {
 	NA,
 	RELOAD_INT,
-	RELOAD_BOOL
+	RELOAD_BOOL,
+	RELOAD_STR
 } RELOAD_TYPE;
 
 typedef struct _AST {

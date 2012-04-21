@@ -3,18 +3,29 @@
 #include <iostream>
 #include <string>
 #include <string>
+#include <sstream>
 #include "semantic.h"
 #include "memmgr.h"
 #include "instruct.h"
 #include "constStr.h"
 #include "typejumper.h"
 #include "AST2TM.h"
+#define CPN (pN(currentProcName))
 
 std::map<std::string, ProcBlock> procBlocks;
 std::vector<Block> gBlocks;
 std::vector<unsigned> currentBreakTarget;
 std::string currentProcName;
 
+inline std::string pN(std::string n) {
+	return (n == "0")?"main":n;
+}
+
+inline std::string nd2line(SemanticNode nd) {
+	std::stringstream ss;
+	ss << nd.line();
+	return ss.str();
+}
 
 void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector);
 void attachLoopIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector);
@@ -25,7 +36,7 @@ std::vector<unsigned> typeChecker(std::string currentProc,SemanticNode varlistnd
 void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector);
 
 void buildProcBlock(SemanticNode nd) {
-	Block tmpBlock;
+	Block tmpBlock,entranceBlock;
 	unsigned i,j,max,k,a,b;
 
 	if (nd.type() == ASTN_forward) {
@@ -109,6 +120,9 @@ void buildProcBlock(SemanticNode nd) {
 		tmpBlock.add(imMgr.newIM(LDA, 4, 0, 4));
 	}
 	else {
+		tmpBlock.add(imMgr.newIM(LDA, 4, 0, 4));
+		entranceBlock.add(imMgr.newIM(tmpBlock.entrance()));
+		pb.add(entranceBlock);
 		attachStmsBlock(pb.arMgr, nd.getChild(ASTN_stms, 0), tmpBlock, pb.blocks);
 	}
 	tmpBlock.add(imMgr.newIM(LD,7,pb.arMgr.savedRegOffset() + 7,6));
@@ -117,7 +131,7 @@ void buildProcBlock(SemanticNode nd) {
 }
 
 void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector) {
-	currentBlock.add(imMgr.newIM(LDA, 4, 0, 4));
+	currentBlock.add(imMgr.newIM(LDA, 4, 0, 4, CPN+" stms: @"+nd2line(nd)+" stms block entrance, this is a NOOP"));
 	unsigned i, max, ifExit;
 
 	max = nd.getChildCount(ASTN_stm);
@@ -128,7 +142,7 @@ void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::v
 		sn2 = nd.getChild(ASTN_stm, i).getChild(0);
 		switch(sn2.type()) {
 		case ASTN_if:
-			ifExit = imMgr.newIM(LDA,4 ,0 , 4);
+			ifExit = imMgr.newIM(LDA,4 ,0 ,4, CPN+" stms: @"+nd2line(sn2)+" NOOP, exit of if.");
 			k = sn2.getChildCount(ASTN_branch);
 			for( j = 0; j < k; j++) {
 				sn3 = sn2.getChild(ASTN_branch, j); //each branch
@@ -136,13 +150,13 @@ void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::v
 					attachExpIM(arMgr, sn3.getChild(ASTN_exp, 0), currentBlock, currentBlockVector);
 					
 					Block branchBlock;
-					branchBlock.add(imMgr.newIM(LDA,4,0,4));
-					currentBlock.add(imMgr.newIM(LD, 4, arMgr.lookupExp(sn3.getChild(ASTN_exp, 0)),6));
+					branchBlock.add(imMgr.newIM(LDA,4,0,4,CPN+" stms: @"+nd2line(sn3)+" NOOP, branch entrance"));
+					currentBlock.add(imMgr.newIM(LD, 4, arMgr.lookupExp(sn3.getChild(ASTN_exp, 0)),6,CPN+" stms: @"+nd2line(sn3)+" R4=value of branch condition"));
 					arMgr.freeTmp();
-					currentBlock.add(imMgr.newIM(JEQ,4,1,7));
-					currentBlock.add(imMgr.newIM(branchBlock.entrance()));
+					currentBlock.add(imMgr.newIM(JEQ,4,1,7,CPN+" stms: @"+nd2line(sn3)+" skip next if R4 == false"));
+					currentBlock.add(imMgr.newIM(branchBlock.entrance(),CPN+" stms: @"+nd2line(sn3)+" goto branch stms"));
 					attachStmsBlock(arMgr, sn3.getChild(ASTN_stms,0),branchBlock,currentBlockVector);
-					branchBlock.add(imMgr.newIM(ifExit));
+					branchBlock.add(imMgr.newIM(ifExit)),CPN+" stms: @"+nd2line(sn3)+" last ins of branch, go to exit of if stm";
 					currentBlockVector.push_back(branchBlock);
 				}
 				else {
@@ -156,7 +170,7 @@ void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::v
 			attachLoopIM(arMgr,sn2, currentBlock, currentBlockVector);
 			break;
 		default: 
-			attachStmIM(arMgr,sn2, currentBlock, currentBlockVector);
+			attachStmIM(arMgr,nd.getChild(ASTN_stm, i), currentBlock, currentBlockVector);
 			break;
 		}
 	}
@@ -164,7 +178,7 @@ void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::v
 
 void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector) {
 	if (nd.getChildCount() == 0) {
-		currentBlock.add(imMgr.newIM(LDA,4,0,4));
+		currentBlock.add(imMgr.newIM(LDA,4,0,4,CPN+" stms: @"+nd2line(nd)+" NOOP, for empty stm"));
 		return;
 	}
 	SemanticNode sn, lvl;
@@ -187,10 +201,10 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 	case ASTN_write:
 	case ASTN_writes:
 		attachExpIM(arMgr, sn.getChild(ASTN_exp,0), currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD, 0, arMgr.lookupExp(sn.getChild(ASTN_exp, 0)), 6));
+		currentBlock.add(imMgr.newIM(LD, 0, arMgr.lookupExp(sn.getChild(ASTN_exp, 0)), 6,CPN+" stms: @"+nd2line(sn)+" R0=value to be wrote"));
 		arMgr.freeTmp();
 		if (sn.reload() == ice9int) {
-			currentBlock.add(imMgr.newIM(OUT,0,0,0));
+			currentBlock.add(imMgr.newIM(OUT,0,0,0,CPN+" stms: @"+nd2line(sn)+" Output the integer in R0"));
 		}
 		else {
 			currentBlock.add(imMgr.newIM(LD , 1,0,0));
@@ -609,12 +623,12 @@ unsigned buildMain(ARMgr & arMgr, SemanticNode nd, std::vector<Block> & currentB
 		}
 	}
 	if (nd.getChildCount(ASTN_stms) == 0){
-		tmpBlock.add(imMgr.newIM(LDA, 4, 0, 4));
+		tmpBlock.add(imMgr.newIM(LDA, 4, 0, 4, "main stms: entrance. this is a NOOP"));
 	}
 	else {
 		attachStmsBlock(arMgr, nd.getChild(ASTN_stms, 0), tmpBlock, currentBlockVector);
 	}
-	tmpBlock.add(exitIM);
+	tmpBlock.add(imMgr.newIM(exitIM, "main stms: reached end of main body, goto exit"));
 	currentBlockVector.push_back(tmpBlock);
 	return tmpBlock.entrance();
 }
@@ -624,23 +638,24 @@ void AST2TM(std::ostream &os) {
 	std::map<std::string, ProcBlock>::iterator iter;
 	SemanticTree tr;
 	unsigned i, max, addr, en, exitIM;
-	Block emptyBlock, tmpBlock;
+	Block tmpBlock, entranceBlock;
 	GlobalARMgr gARMgr;
 
 	buildConstTable();
 	currentProcName = "0";
 
-	tmpBlock = emptyBlock;
-	tmpBlock.add(imMgr.newIM(LDC, 6, ARhead(), 0));
-	tmpBlock.add(imMgr.newIM(LDC, 5, 0, 0));
-	tmpBlock.add(imMgr.newIM(LD , 5, 0, 5));
-	exitIM = imMgr.newIM(HALT,0, 0, 0);
+	tmpBlock.add(imMgr.newIM(LDC, 6, ARhead(), 0, "main init: Initialize Global AR pointer"));
+	entranceBlock.add(imMgr.newIM(tmpBlock.entrance(), "main init: Goto main block"));
+	gBlocks.push_back(entranceBlock);
+	tmpBlock.add(imMgr.newIM(LDC, 5, 0, 0, "main init: R5 points to dMem[0]"));
+	tmpBlock.add(imMgr.newIM(LD , 5, 0, 5, "main init: R5 = dMem[0] (Initialize Fa pointer)"));
+	exitIM = imMgr.newIM(HALT,0, 0, 0, "main exit: program exit");
 
 	en = buildMain(gARMgr, tr, gBlocks, exitIM);
-	tmpBlock.add(imMgr.newIM(LDA,4,2,7));
-	tmpBlock.add(imMgr.newIM(ST,4,gARMgr.savedRegOffset()+7,6));
+	tmpBlock.add(imMgr.newIM(LDA,4,2,7,"main init: reg[4] now store PC+2 which is exit of the program"));
+	tmpBlock.add(imMgr.newIM(ST,4,gARMgr.savedRegOffset()+7,6, "main init: store R4 to stacked PC. If main returns, poped PC will points to exit"));
 
-	tmpBlock.add(imMgr.newIM(en));
+	tmpBlock.add(imMgr.newIM(en, "main init: goto body of main (stms)"));
 	tmpBlock.add(exitIM);
 	gBlocks.push_back(tmpBlock);
 

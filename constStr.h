@@ -5,6 +5,6 @@
 #include <iostream>
 void buildConstTable();
 unsigned lookupStr(std::string);
-void constTable2TM(std::ostream);
+void constTable2TM(std::ostream&);
 unsigned ARhead();
 #endif

@@ -53,9 +53,8 @@ public:
 extern IMMgr imMgr;
 
 class Block {
-private:
-	std::vector<unsigned> im;
 public:
+	std::vector<unsigned> im;
 	unsigned entrance();
 	void toTM(std::ostream&);
 	void add(unsigned i);
@@ -63,9 +62,8 @@ public:
 };
 
 class ProcBlock {
-private:
-	std::vector<Block> blocks;
 public:
+	std::vector<Block> blocks;
 	ARMgr arMgr;
 	unsigned entrance();
 	void toTM(std::ostream&);

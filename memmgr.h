@@ -16,7 +16,7 @@ struct VMPair {
 extern std::map<Varname, MemOffset> globalVar;
 
 class ARMgr {
-private:
+protected:
 	unsigned ARlength;
 	unsigned paraNum;
 	unsigned localNum;
@@ -39,6 +39,7 @@ public:
 	MemOffset pushPara(Varname);
 	virtual MemOffset insert(Varname);
 	virtual MemOffset insertArray(Varname, std::vector<unsigned>);
+	MemOffset forceInsert(Varname, MemOffset);
 	MemOffset insert(SemanticNode exp);
 	MemOffset pushFa(Varname);
 	void popFa();
@@ -49,7 +50,7 @@ public:
 
 class GlobalARMgr : public ARMgr {
 public:
-	virtual MemOffset insert(Varnamr);
+	virtual MemOffset insert(Varname);
 	virtual MemOffset insertArray(Varname, std::vector<unsigned>);
 };
 

@@ -44,6 +44,9 @@ conststr$(FIX).o: constStr.cpp constStr.h
 typejumper$(FIX).o: typejumper.cpp typejumper.h
 	g++ $(DEBUG) -c $< -o $@
 
+ast2tm$(FIX).o: AST2TM.cpp AST2TM.h
+	g++ $(DEBUG) -c $< -o $@
+
 clean:
 	rm -f *.o ice9.output
 

@@ -7,58 +7,113 @@
 #include "memmgr.h"
 #include "instruct.h"
 #include "constStr.h"
+#include "typejumper.h"
 #include "AST2TM.h"
 
 std::map<std::string, ProcBlock> procBlocks;
 std::vector<Block> gBlocks;
 std::vector<unsigned> currentBreakTarget;
+std::string currentProcName;
 
-unsigned buildBlock(ARMgr &, SemanticNode, std::vector<Block> &);
 
-void AST2TM(std::ostream &os) {
-	typename std::map<std::string, ProcBlock>::iterator iter;
-	SemanticTree tr;
-	unsigned i, maxi, addr, en, exitIM;
-	Block emptyBlock, tmpBlock;
-	GlobalARMgr gARMgr;
+void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector);
+void attachLoopIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector);
 
-	buildConstTable();
 
-	tmpBlock = emptyBlock;
-	tmpBlock.add(imMgr.newIM(LDC, 6, ARhead(), 0));
-	tmpBlock.add(imMgr.newIM(LDC, 5, 0, 0));
-	tmpBlock.add(imMgr.newIM(LD , 5, 0, 5));
-	exitIM = imMgr.newIM(HALT,0, 0, 0);
-
-	en = buildMain(gARMgr, tr, gBlocks, exitIM);
-	tmpBlock.add(imMgr.newIM(LDA,4,2,7));
-	tmpBlock.add(imMgr.newIM(ST,4,gARMgr.savedRegOffset()+7,6));
-
-	tmpBlock.add(imMgr.newIM(en));
-	tmpBlock.add(exitIM);
-	gBlocks.push_back(tmpBlock);
-
-	max = gBlocks.size();
-	addr = 0;
-	for (i = 0; i < max; i++) {
-		addr = gBlocks[i].assignAbsoluteAddr(addr);
-	}
-	for (iter = procBlocks.begin(); iter != procBlocks.end(); iter++) {
-		addr = (*iter).assignAbsoluteAddr(addr);
-	}
-
-	constTable2TM(os);
-	max = gBlocks.size();
-	for (i = 0; i < max; i++) {
-		gBlocks[i].toTM(os);
-	}
-	for (iter = procBlocks.begin(); iter != procBlocks.end(); iter++) {
-		(*iter).toTM(os);
-	}
-}
+void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector);
+std::vector<unsigned> typeChecker(std::string currentProc,SemanticNode varlistnd);
+void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector);
 
 void buildProcBlock(SemanticNode nd) {
-	;
+	Block tmpBlock;
+	unsigned i,j,max,k,a,b;
+
+	if (nd.type() == ASTN_forward) {
+		ProcBlock &pb = procBlocks[nd.getChild(ASTN_L_id, 0).idValue()];
+		tmpBlock.add(imMgr.newIM(LDA,5,0,5));
+		pb.add(tmpBlock);
+		pb.arMgr.forceInsert(nd.getChild(ASTN_L_id,0).idValue(), 0);
+		if (nd.getChildCount(ASTN_declistx) != 0) {
+			SemanticNode declistxnd;
+			unsigned i,j,max,k;
+			declistxnd = nd.getChild(ASTN_declistx, 0);
+			max = declistxnd.getChildCount(ASTN_declist);
+			for ( i = 0; i < max; i++) {// for each declist
+				SemanticNode idlistnd;
+				idlistnd = declistxnd.getChild(ASTN_declist, i).getChild(ASTN_idlist,0);
+				k = idlistnd.getChildCount(ASTN_L_id);
+				for(j = 0; j < k; j++) {
+					pb.arMgr.pushPara(idlistnd.getChild(ASTN_L_id, j).idValue());
+				}
+			}
+			
+		}
+		return;
+	}
+
+	//if proc node:
+	if (procBlocks.find(nd.getChild(ASTN_L_id,0).idValue()) == procBlocks.end()) { // if no forward
+		ProcBlock &pb = procBlocks[nd.getChild(ASTN_L_id, 0).idValue()];
+		pb.arMgr.forceInsert(nd.getChild(ASTN_L_id,0).idValue(), 0);
+		if (nd.getChildCount(ASTN_declistx) != 0) {
+			SemanticNode declistxnd;
+			unsigned i,j,max,k;
+			declistxnd = nd.getChild(ASTN_declistx, 0);
+			max = declistxnd.getChildCount(ASTN_declist);
+			for ( i = 0; i < max; i++) {// for each declist
+				SemanticNode idlistnd;
+				idlistnd = declistxnd.getChild(ASTN_declist, i).getChild(ASTN_idlist,0);
+				k = idlistnd.getChildCount(ASTN_L_id);
+				for(j = 0; j < k; j++) {
+					pb.arMgr.pushPara(idlistnd.getChild(ASTN_L_id, j).idValue());
+				}
+			}
+			
+		}
+	}
+
+	ProcBlock &pb = procBlocks[nd.getChild(ASTN_L_id,0).idValue()];
+	currentProcName = nd.getChild(ASTN_L_id, 0).idValue();
+
+	if (nd.getChildCount(ASTN_dec1s) != 0) {
+		char *procName;
+		SemanticNode decsnd;
+		decsnd = nd.getChild(ASTN_dec1s, 0);
+		max = decsnd.getChildCount(ASTN_var);
+		procName = nd.getChild(ASTN_L_id,0).idValue();
+
+		for(i = 0; i < max; i++) {
+			SemanticNode sn;
+			sn = decsnd.getChild(ASTN_var, i);
+			k = sn.getChildCount();
+			for(j = 0; j < k; j++) {  //each varlist
+				SemanticNode sn1;
+				std::vector<unsigned> dim;
+				sn1 = sn.getChild(ASTN_varlist, j);
+				dim = typeChecker(procName, sn1);
+				b = sn1.getChild(ASTN_idlist).getChildCount(ASTN_L_id);
+				for(a = 0; a < b; a++) {	//each var
+					char *varName;         //update AR structure
+					varName = sn1.getChild(ASTN_idlist).getChild(ASTN_L_id, a).idValue();
+					if(dim.empty() || dim.size() == 0) {
+						pb.arMgr.insert(varName);
+					}
+					else {
+						pb.arMgr.insertArray(varName,dim);
+					}
+				}
+			}
+		}
+	}
+	if (nd.getChildCount(ASTN_stms) == 0){
+		tmpBlock.add(imMgr.newIM(LDA, 4, 0, 4));
+	}
+	else {
+		attachStmsBlock(pb.arMgr, nd.getChild(ASTN_stms, 0), tmpBlock, pb.blocks);
+	}
+	tmpBlock.add(imMgr.newIM(LD,7,pb.arMgr.savedRegOffset() + 7,6));
+	pb.add(tmpBlock);
+	currentProcName = "0";
 }
 
 void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vector<Block> &currentBlockVector) {
@@ -82,26 +137,26 @@ void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::v
 					
 					Block branchBlock;
 					branchBlock.add(imMgr.newIM(LDA,4,0,4));
-					currentBlock.add(imMgr.newIM(LD, 4, arMgr.lookupExp(sn3.getChild_exp, 0),6));
+					currentBlock.add(imMgr.newIM(LD, 4, arMgr.lookupExp(sn3.getChild(ASTN_exp, 0)),6));
 					arMgr.freeTmp();
-					currentBlcok.add(imMgr.newIM(JEQ,4,1,7));
+					currentBlock.add(imMgr.newIM(JEQ,4,1,7));
 					currentBlock.add(imMgr.newIM(branchBlock.entrance()));
 					attachStmsBlock(arMgr, sn3.getChild(ASTN_stms,0),branchBlock,currentBlockVector);
 					branchBlock.add(imMgr.newIM(ifExit));
 					currentBlockVector.push_back(branchBlock);
 				}
 				else {
-					attachStmsBlocks(arMgr, sn3.getChild(ASTN_stms, 0), currentBlock, currentBlockVector);
+					attachStmsBlock(arMgr, sn3.getChild(ASTN_stms, 0), currentBlock, currentBlockVector);
 				}
 			}
 			currentBlock.add(ifExit);
 			break;
 		case ASTN_fa:
 		case ASTN_do:
-			attachLoopIM(arMgr,SemanticNode sn2, currentBlock, currentBlockVector);
+			attachLoopIM(arMgr,sn2, currentBlock, currentBlockVector);
 			break;
 		default: 
-			attachStmIM(arMgr,SemanticNode sn2, currentBlock, currentBlockVector);
+			attachStmIM(arMgr,sn2, currentBlock, currentBlockVector);
 			break;
 		}
 	}
@@ -120,13 +175,13 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 		attachExpIM(arMgr, sn, currentBlock, currentBlockVector);
 		arMgr.freeTmp();
 		break;
-	case ASTN_break:
+	case ASTN_L_break:
 		currentBlock.add(imMgr.newIM(currentBreakTarget[currentBreakTarget.size() - 1]));
 		break;
-	case ASTN_exit:
+	case ASTN_L_exit:
 		currentBlock.add(imMgr.newIM(HALT,0,0,0));
 		break;
-	case ASTN_return:
+	case ASTN_L_return:
 		currentBlock.add(imMgr.newIM(LD, 7,arMgr.savedRegOffset() + 7, 6));
 		break;
 	case ASTN_write:
@@ -155,13 +210,13 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 			currentBlock.add(ex);
 		}
 		if (sn.type() == ASTN_writes) {
-			currentBlock(imMgr.newIM(OUTNL,0,0,0));
+			currentBlock.add(imMgr.newIM(OUTNL,0,0,0));
 		}
 		break;
 	case ASTN_assign: {
 		std::vector<unsigned> v;
 		lvl = sn.getChild(ASTN_lvalue, 0);
-		v = varJumper.lookupDim(lvl.getChild(ASTN_L_id, 0).idValue());
+		v = varJumper.lookupDim(currentProcName, lvl.getChild(ASTN_L_id, 0).idValue());
 		currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(lvl.getChild(ASTN_L_id, 0).idValue()),6));
 		unsigned i,j,max,k,size;
 		size = 1;
@@ -214,10 +269,10 @@ void attachLoopIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vect
 	case ASTN_fa:
 		faOffset = arMgr.pushFa(nd.getChild(ASTN_L_id, 0).idValue());
 		attachExpIM(arMgr, nd.getChild(ASTN_exp, 0), currentBlock,currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(nd.getChild(ASTN_exp), 0), 6));
+		currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(nd.getChild(ASTN_exp, 0)), 6));
 		arMgr.freeTmp();
 		attachExpIM(arMgr, nd.getChild(ASTN_exp, 1), currentBlock,currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD, 4, arMgr.lookupExp(nd.getChild(ASTN_exp), 1), 6));
+		currentBlock.add(imMgr.newIM(LD, 4, arMgr.lookupExp(nd.getChild(ASTN_exp, 1)), 6));
 		arMgr.freeTmp();
 		currentBlock.add(imMgr.newIM(ST, 3, -(int)faOffset, 5));
 		currentBlock.add(imMgr.newIM(ST, 4, -(int)(faOffset + 1), 5));
@@ -247,17 +302,18 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 	SemanticNode sn;
 	MemOffset m;
 	sn = nd.getChild(0);
-	m = arMgr.insertExp(nd);
+	m = arMgr.insert(nd);
 	switch(sn.type()) {
 	case ASTN_lvalue: 
-		if (arMgr.isFa(sn.getChild(ASTN_L_id))) {
-			currentBlock.add(imMgr.newIM(LD, 4,));
+		if (arMgr.isFa(sn.getChild(ASTN_L_id,0).idValue())) {
+			currentBlock.add(imMgr.newIM(LD, 4,arMgr.lookupVar(sn.getChild(ASTN_L_id,0).idValue()),5));
+			currentBlock.add(imMgr.newIM(ST,4,m,6));
 		}
 		else {
 			std::vector<unsigned> v;
-			v = varJumper.lookupDim(sn.getChild(ASTN_L_id, 0).idValue());
+			v = varJumper.lookupDim(currentProcName, sn.getChild(ASTN_L_id, 0).idValue());
 			currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(sn.getChild(ASTN_L_id, 0).idValue()),6));
-			unsigned i,j,max,k,size;
+			unsigned i,j,max,k,size,of;
 			size = 1;
 			max = v.size();
 			for (i = 0; i < max; i++) {
@@ -275,9 +331,9 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 				currentBlock.add(imMgr.newIM(MUL,3,3,2));
 				currentBlock.add(imMgr.newIM(ADD,4,4,3));
 			}
+			currentBlock.add(imMgr.newIM(LD,4,0,4));
+			currentBlock.add(imMgr.newIM(ST,4,m,6));
 		}
-		currentBlock.add(imMgr.newIM(LD,4,0,4));
-		currentBlock.add(imMgr.newIM(ST,4,m,6));
 		break;
 	case ASTN_L_int:
 		currentBlock.add(imMgr.newIM(LDC,0,sn.intValue(),0));
@@ -480,6 +536,9 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 		currentBlock.add(imMgr.newIM(LDC,3,0,0));
 		currentBlock.add(imMgr.newIM(ST,3,m,6));
 		break;
+	case ASTN_read:
+		currentBlock.add(imMgr.newIM(IN,0,0,0));
+		currentBlock.add(imMgr.newIM(ST,0,m,6));
 	}
 }
 
@@ -488,7 +547,7 @@ std::vector<unsigned> typeChecker(std::string currentProc,SemanticNode varlistnd
 	std::vector<unsigned> ret, baseTypeDim;
 	SemanticNode typedesnd;
 	unsigned i, max;
-	typedesnd = varlistamMgrnd.getChild(typedesnd, 0);
+	typedesnd = varlistnd.getChild(ASTN_typedes, 0);
 	max = typedesnd.getChildCount(ASTN_L_int);
 	for (i = 0; i < max; i++) {
 		//for each dim
@@ -527,10 +586,10 @@ unsigned buildMain(ARMgr & arMgr, SemanticNode nd, std::vector<Block> & currentB
 					SemanticNode sn1;
 					sn1 = sn.getChild(ASTN_varlist, j);
 					dim = typeChecker("0", sn1);
-					b = sn1.getChild(ASTN_idlist).getChildCount(id);
+					b = sn1.getChild(ASTN_idlist).getChildCount(ASTN_L_id);
 					for(a = 0; a < b; a++) {	//each var
 						char *varName;         //update AR structure
-						varName = sn1.getChild(ASTN_idlist).getChild(id, a);
+						varName = sn1.getChild(ASTN_idlist).getChild(ASTN_L_id, a).idValue();
 						if(dim.empty() || dim.size() == 0) {
 							arMgr.insert(varName);
 						}
@@ -558,4 +617,48 @@ unsigned buildMain(ARMgr & arMgr, SemanticNode nd, std::vector<Block> & currentB
 	tmpBlock.add(exitIM);
 	currentBlockVector.push_back(tmpBlock);
 	return tmpBlock.entrance();
+}
+
+
+void AST2TM(std::ostream &os) {
+	std::map<std::string, ProcBlock>::iterator iter;
+	SemanticTree tr;
+	unsigned i, max, addr, en, exitIM;
+	Block emptyBlock, tmpBlock;
+	GlobalARMgr gARMgr;
+
+	buildConstTable();
+	currentProcName = "0";
+
+	tmpBlock = emptyBlock;
+	tmpBlock.add(imMgr.newIM(LDC, 6, ARhead(), 0));
+	tmpBlock.add(imMgr.newIM(LDC, 5, 0, 0));
+	tmpBlock.add(imMgr.newIM(LD , 5, 0, 5));
+	exitIM = imMgr.newIM(HALT,0, 0, 0);
+
+	en = buildMain(gARMgr, tr, gBlocks, exitIM);
+	tmpBlock.add(imMgr.newIM(LDA,4,2,7));
+	tmpBlock.add(imMgr.newIM(ST,4,gARMgr.savedRegOffset()+7,6));
+
+	tmpBlock.add(imMgr.newIM(en));
+	tmpBlock.add(exitIM);
+	gBlocks.push_back(tmpBlock);
+
+	max = gBlocks.size();
+	addr = 0;
+	for (i = 0; i < max; i++) {
+		addr = gBlocks[i].assignAbsoluteAddr(addr);
+	}
+	for (iter = procBlocks.begin(); iter != procBlocks.end(); iter++) {
+		addr = (*iter).second.assignAbsoluteAddr(addr);
+	}
+
+	constTable2TM(os);
+	max = gBlocks.size();
+	for (i = 0; i < max; i++) {
+		gBlocks[i].toTM(os);
+	}
+	for (iter = procBlocks.begin(); iter != procBlocks.end(); iter++) {
+		(*iter).second.toTM(os);
+	}
 }

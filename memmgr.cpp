@@ -77,6 +77,10 @@ MemOffset ARMgr::insert(Varname n) {
 	return localVar[n];
 }
 
+MemOffset ARMgr::forceInsert(Varname n, MemOffset of) {
+	return localVar[n] = of;
+}
+
 MemOffset ARMgr::insert(SemanticNode exp) {
 	localTmp[exp] = ARlength;
 	return ARlength++;
@@ -115,14 +119,14 @@ MemOffset ARMgr::localTmpOffset() {
 	return 9 + paraNum + localNum;
 }
 
-MemOffset GlobalMgr::insert(Varname) {
+MemOffset GlobalARMgr::insert(Varname n) {
 	assert(global.find(n) == global.end());
 	global[n] = localTmpOffset();
 	localNum ++;
 	return global[n];
 }
 
-virtual MemOffset ARMgr::insertArray(Varname n, std::vector<unsigned> d) {
+MemOffset ARMgr::insertArray(Varname n, std::vector<unsigned> d) {
 	assert(localVar.find(n) == localVar.end());
 	unsigned i,max,slot;
 	localVar[n] = localTmpOffset();
@@ -131,11 +135,11 @@ virtual MemOffset ARMgr::insertArray(Varname n, std::vector<unsigned> d) {
 	for (i = 0; i < max; i++) {
 		slot *= d[i];
 	}
-	localNum += ttlslot;
+	localNum += slot;
 	return localVar[n];
 }
 
-virtual MemOffset GlobalMgr::insertArray(Varname n, std::vector<unsigned> d) {
+MemOffset GlobalARMgr::insertArray(Varname n, std::vector<unsigned> d) {
 	assert(global.find(n) == global.end());
 	global[n] = localTmpOffset();
 	unsigned i,max,slot;
@@ -144,6 +148,6 @@ virtual MemOffset GlobalMgr::insertArray(Varname n, std::vector<unsigned> d) {
 	for (i = 0; i < max; i++) {
 		slot *= d[i];
 	}
-	localNum += ttlslot;
+	localNum += slot;
 	return global[n];
 }

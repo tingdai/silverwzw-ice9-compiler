@@ -146,7 +146,7 @@ void nodeCheckIn(SemanticNode nd) {
 				s = "0";
 			}
 			idn = idlst.getChild(ASTN_L_id, i).idValue();
-			if (typeTab.getType(typedesnd.getChild(ASTN_L_id, 0),nd.line()).dim != 0) {
+			if (typeTab.getType(typedesnd.getChild(ASTN_L_id, 0).idValue(),nd.line()).dim != 0) {
 				varJumper.addType(s, idn, typedesnd.getChild(ASTN_L_id, 0).idValue());
 			}
 			else {

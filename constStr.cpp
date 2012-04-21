@@ -50,7 +50,7 @@ unsigned lookupStr(std::string s) {
 	assert(false);
 }
 
-void constTable2TM(std::ostream os) {
+void constTable2TM(std::ostream &os) {
 	unsigned max,i;
 	max = strTab.size();
 	for (i = 0; i < max; i++) {

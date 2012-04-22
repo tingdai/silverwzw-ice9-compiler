@@ -30,6 +30,7 @@ void ARMgr::popFa() {
 MemOffset ARMgr::pushPara(Varname n) {
 	assert(localVar.find(n) == localVar.end());
 	paraNum++;
+	ARlength++;
 	return (localVar[n] = parametersOffset() + paraNum - 1);
 }
 
@@ -75,6 +76,7 @@ MemOffset ARMgr::insert(Varname n) {
 	assert(localVar.find(n) == localVar.end());
 	localVar[n] = localTmpOffset();
 	localNum ++;
+	ARlength ++;
 	return localVar[n];
 }
 
@@ -127,6 +129,7 @@ MemOffset GlobalARMgr::insert(Varname n) {
 	assert(global.find(n) == global.end());
 	global[n] = localTmpOffset();
 	localNum ++;
+	ARlength++;
 	return global[n];
 }
 

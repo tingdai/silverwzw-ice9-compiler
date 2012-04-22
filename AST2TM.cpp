@@ -120,7 +120,7 @@ void buildProcBlock(SemanticNode nd) {
 		pb.add(entranceBlock);
 		attachStmsBlock(pb.arMgr, nd.getChild(ASTN_stms, 0), tmpBlock, pb.blocks);
 	}
-	tmpBlock.add(imMgr.newIM(LD,7,pb.arMgr.savedRegOffset() + 7,6,CPN+"(b)@"+nd2line(nd.getChild(nd.getChildCount()))+" return, recover R7 from AR"));
+	tmpBlock.add(imMgr.newIM(LD,7,pb.arMgr.savedRegOffset() + 7,6,CPN+"(b)@"+nd2line(nd)+" return, recover R7 from AR"));
 	pb.add(tmpBlock);
 	currentProcName = "0";
 }
@@ -226,7 +226,7 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 		std::vector<unsigned> v;
 		lvl = sn.getChild(ASTN_lvalue, 0);
 		v = varJumper.lookupDim(currentProcName, lvl.getChild(ASTN_L_id, 0).idValue());
-		currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(lvl.getChild(ASTN_L_id, 0).idValue()),6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the value/pointer of LHS id to R4"));
+		currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(lvl.getChild(ASTN_L_id, 0).idValue()),6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the pointer of LHS id to R4"));
 		unsigned i,j,max,k,size;
 		size = 1;
 		max = v.size();
@@ -396,8 +396,8 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 			num[0] += i;
 			currentBlock.add(imMgr.newIM(ST ,i,pb.arMgr.savedRegOffset() + i,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push Register "+num+" to callee AR"));
 		}
-		currentBlock.add(imMgr.newIM(LDA,5,arMgr.currentForTop(),5));
-		currentBlock.add(imMgr.newIM(LDA,6,0,0));
+		currentBlock.add(imMgr.newIM(LDA,5,arMgr.currentForTop(),5,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", update Fa counter for callee"));
+		currentBlock.add(imMgr.newIM(LDA,6,0,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", R6=R0, update AR for callee"));
 		currentBlock.add(imMgr.newIM(LDA,2,2,7,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", R2=PC+2, the fixed PC to be pushed into callee"));
 		currentBlock.add(imMgr.newIM(ST ,2,pb.arMgr.savedRegOffset() + 7,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push R2(=PC+1, fixed PC) to callee AR, it's also the return address for callee"));
 		currentBlock.add(imMgr.newIM(pb.entrance(),CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", goto callee blocks"));

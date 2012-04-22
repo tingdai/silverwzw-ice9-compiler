@@ -1,6 +1,7 @@
 #include <cassert>
+#include <string>
+#include <iostream>
 #include "memmgr.h"
-
 
 std::map<Varname, MemOffset> globalVar;
 
@@ -87,6 +88,9 @@ MemOffset ARMgr::insert(SemanticNode exp) {
 }
 
 MemOffset ARMgr::currentForTop() {
+	if (forStack.size() == 0) {
+		return 0;
+	}
 	return forStack[forStack.size()-1].offset;
 }
 

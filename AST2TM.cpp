@@ -151,7 +151,7 @@ void attachStmsBlock(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::v
 					currentBlock.add(imMgr.newIM(JEQ,4,1,7,CPN+"(b)@"+nd2line(sn3)+" skip next if R4 == false"));
 					currentBlock.add(imMgr.newIM(branchBlock.entrance(),CPN+"(b)@"+nd2line(sn3)+" goto branch stms"));
 					attachStmsBlock(arMgr, sn3.getChild(ASTN_stms,0),branchBlock,currentBlockVector);
-					branchBlock.add(imMgr.newIM(ifExit)),CPN+"(b)@"+nd2line(sn3)+" last ins of branch, go to exit of if stm";
+					branchBlock.add(imMgr.newIM(ifExit,CPN+"(b)@"+nd2line(sn3)+" last ins of branch, go to exit of if stm"));
 					currentBlockVector.push_back(branchBlock);
 				}
 				else {
@@ -266,6 +266,7 @@ void attachLoopIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vect
 	switch(nd.type()) {
 	case ASTN_do:
 		attachExpIM(arMgr, nd.getChild(ASTN_exp, 0), loopBlock, currentBlockVector);
+		currentBlock.add(imMgr.newIM(loopBlock.entrance(),CPN+"(b)@"+nd2line(nd)+" loop:do, go to entrance of loop block"));
 		loopBlock.add(imMgr.newIM(LD,4,arMgr.lookupExp(nd.getChild(ASTN_exp, 0)),6,CPN+"(b)@"+nd2line(nd)+" loop:do, load the value of the loop condition to R4"));
 		arMgr.freeTmp();
 		loopBlock.add(imMgr.newIM(JNE,4,1,7,CPN+"(b)@"+nd2line(nd)+" loop:do, if it is true(not 0), skip next instruction"));
@@ -314,7 +315,7 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 	switch(sn.type()) {
 	case ASTN_lvalue: 
 		if (arMgr.isFa(sn.getChild(ASTN_L_id,0).idValue())) {
-			currentBlock.add(imMgr.newIM(LD, 4,arMgr.lookupVar(sn.getChild(ASTN_L_id,0).idValue()),5,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the value of this var (which is a Fa Counter) to R4"));
+			currentBlock.add(imMgr.newIM(LD, 4,-(int)arMgr.lookupFa(sn.getChild(ASTN_L_id,0).idValue()),5,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the value of this var (which is a Fa Counter) to R4"));
 			currentBlock.add(imMgr.newIM(ST,4,m,6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, store the value of exp to dMem"));
 		}
 		else {

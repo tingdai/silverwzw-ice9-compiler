@@ -331,100 +331,108 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 			max = sn.getChildCount(ASTN_exp);
 			for (i = 0; i < max; i++) {
 				size /= v[i];
-				currentBlock.add(imMgr.newIM(ST,4,of,6));
+				currentBlock.add(imMgr.newIM(ST,4,of,6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, about to evaluate the subscript, protect the pointer R4"));
 				attachExpIM(arMgr, sn.getChild(ASTN_exp, i), currentBlock, currentBlockVector);
-				currentBlock.add(imMgr.newIM(LD,4,of,6));
-				currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(sn.getChild(ASTN_exp, i)), 6));
-				currentBlock.add(imMgr.newIM(LDC,2,size,0));
-				currentBlock.add(imMgr.newIM(MUL,3,3,2));
-				currentBlock.add(imMgr.newIM(ADD,4,4,3));
+				currentBlock.add(imMgr.newIM(LD,4,of,6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, subscript exp evaluation finished, recover the pointer R4"));
+				currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(sn.getChild(ASTN_exp, i)), 6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the value of subscript to R3"));
+				currentBlock.add(imMgr.newIM(LDC,2,size,0,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the range of the pointer to R2"));
+				currentBlock.add(imMgr.newIM(MUL,3,3,2,CPN+"(b)@"+nd2line(sn)+" exp:lvl, calculate the offset to next position"));
+				currentBlock.add(imMgr.newIM(ADD,4,4,3,CPN+"(b)@"+nd2line(sn)+" exp:lvl, move pointer R4 to next position"));
 			}
-			currentBlock.add(imMgr.newIM(LD,4,0,4));
-			currentBlock.add(imMgr.newIM(ST,4,m,6));
+			currentBlock.add(imMgr.newIM(LD,4,0,4,CPN+"(b)@"+nd2line(sn)+" exp:lvl, R4=dMem[R4], load the value to R4"));
+			currentBlock.add(imMgr.newIM(ST,4,m,6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, store the value to dMem"));
 		}
 		break;
 	case ASTN_L_int:
-		currentBlock.add(imMgr.newIM(LDC,0,sn.intValue(),0));
-		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		currentBlock.add(imMgr.newIM(LDC,0,sn.intValue(),0,CPN+"(b)@"+nd2line(sn)+" exp:int, Load the const int to R0"));
+		currentBlock.add(imMgr.newIM(ST,0,m,6,CPN+"(b)@"+nd2line(sn)+" exp:int, store the const int to dMem"));
 		break;
 	case ASTN_L_bool:
-		currentBlock.add(imMgr.newIM(LDC,0,sn.boolValue()?1:0,0));
-		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		currentBlock.add(imMgr.newIM(LDC,0,sn.boolValue()?1:0,0,CPN+"(b)@"+nd2line(sn)+" exp:bool, Load the const bool to R0"));
+		currentBlock.add(imMgr.newIM(ST,0,m,6,CPN+"(b)@"+nd2line(sn)+" exp:bool, store the const bool to dMem"));
 		break;
 	case ASTN_L_string:
-		currentBlock.add(imMgr.newIM(LDC,0,lookupStr(sn.strValue()),0));
-		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		currentBlock.add(imMgr.newIM(LDC,0,lookupStr(sn.strValue()),0,CPN+"(b)@"+nd2line(sn)+" exp:str, Load the const str to R0"));
+		currentBlock.add(imMgr.newIM(ST,0,m,6,CPN+"(b)@"+nd2line(sn)+" exp:str, stroe the const str to dMem"));
 		break;
 	case ASTN_umin:
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD ,1,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),0));
+		currentBlock.add(imMgr.newIM(LD ,1,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:u-, load the value (to R1)"));
 		if(sn.reload() == ice9int) {
-			currentBlock.add(imMgr.newIM(LDC,0,0,0));
-			currentBlock.add(imMgr.newIM(SUB,0,0,1));
+			currentBlock.add(imMgr.newIM(LDC,0,0,0,CPN+"(b)@"+nd2line(sn)+" exp:u-:int, R0=0"));
+			currentBlock.add(imMgr.newIM(SUB,0,0,1,CPN+"(b)@"+nd2line(sn)+" exp:u-:int, R0=R0-R1 => R0=0-R1 => R0=-R1"));
 		}
 		else {
-			currentBlock.add(imMgr.newIM(LDC,0,1,0));
-			currentBlock.add(imMgr.newIM(JEQ,1,1,7));
-			currentBlock.add(imMgr.newIM(LDC,0,0,0));
+			currentBlock.add(imMgr.newIM(LDC,0,1,0,CPN+"(b)@"+nd2line(sn)+" exp:u-:bool, R0=1"));
+			currentBlock.add(imMgr.newIM(JEQ,1,1,7,CPN+"(b)@"+nd2line(sn)+" exp:u-:bool, if R1=0 then skip next instruction"));
+			currentBlock.add(imMgr.newIM(LDC,0,0,0,CPN+"(b)@"+nd2line(sn)+" exp:u-:bool, R0=0"));
 		}
-		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		currentBlock.add(imMgr.newIM(ST,0,m,6,CPN+"(b)@"+nd2line(sn)+" exp:umin, store the result (R0) back to dMem"));
 		break;
 	case ASTN_quest:
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD ,1,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),0));
-		currentBlock.add(imMgr.newIM(ST,1,m,6));
+		currentBlock.add(imMgr.newIM(LD ,1,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:?, load the value of exp to R1"));
+		currentBlock.add(imMgr.newIM(ST,1,m,6,CPN+"(b)@"+nd2line(sn)+" exp:?, store it directly back to dMem"));
 		break;
 	case ASTN_proccall:{
-		ProcBlock &pb = procBlocks[sn.getChild(ASTN_L_id,0).idValue()];
+		char *cee;
+		cee = sn.getChild(ASTN_L_id, 0).idValue();
+		ProcBlock &pb = procBlocks[cee];
 		unsigned i,max,j,k,newAROffset;
 		max = sn.getChildCount(ASTN_exp);
 		for(i = 0; i < max; i++) {
 			attachExpIM(arMgr, sn.getChild(ASTN_exp,i), currentBlock, currentBlockVector);
 		}
 		newAROffset = arMgr.length();
-		currentBlock.add(imMgr.newIM(LDA,0,newAROffset,6));//reg[6] is base addr of caller AR, reg[0] is base addr of callee AR
+		currentBlock.add(imMgr.newIM(LDA,0,newAROffset,6,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", makes R0 point to callee's AR base"));//reg[6] is base addr of caller AR, reg[0] is base addr of callee AR
 		for(i = 0; i < max; i++) {
-			currentBlock.add(imMgr.newIM(LD,2,arMgr.lookupExp(sn.getChild(ASTN_exp,i)),6));
-			currentBlock.add(imMgr.newIM(ST,2,pb.arMgr.parametersOffset() + i,0));
+			char num[]="0";
+			num[0] += i;
+			currentBlock.add(imMgr.newIM(LD,2,arMgr.lookupExp(sn.getChild(ASTN_exp,i)),6,CPN+"(c)@"+nd2line(sn)+"exp:call->"+cee+", load the value of parameter "+num+" from caller AR"));
+			currentBlock.add(imMgr.newIM(ST,2,pb.arMgr.parametersOffset() + i,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", stroe the value of parameter "+num+" to callee AR"));
 		}
 		for(i = 0; i < 7; i++) {
-			currentBlock.add(imMgr.newIM(ST ,i,pb.arMgr.savedRegOffset() + i,0));
+			char num[]="0";
+			num[0] += i;
+			currentBlock.add(imMgr.newIM(ST ,i,pb.arMgr.savedRegOffset() + i,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push Register "+num+" to callee AR"));
 		}
 		currentBlock.add(imMgr.newIM(LDA,5,arMgr.currentForTop(),5));
 		currentBlock.add(imMgr.newIM(LDA,6,0,0));
-		currentBlock.add(imMgr.newIM(LDA,2,2,7));
-		currentBlock.add(imMgr.newIM(ST ,2,pb.arMgr.savedRegOffset() + 7,0));
-		currentBlock.add(imMgr.newIM(pb.entrance()));
+		currentBlock.add(imMgr.newIM(LDA,2,2,7,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", R2=PC+2, the fixed PC to be pushed into callee"));
+		currentBlock.add(imMgr.newIM(ST ,2,pb.arMgr.savedRegOffset() + 7,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push R2(=PC+1, fixed PC) to callee AR, it's also the return address for callee"));
+		currentBlock.add(imMgr.newIM(pb.entrance(),CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", goto callee blocks"));
 		for(i = 0; i < 7; i++) {
-			currentBlock.add(imMgr.newIM(LD ,i,pb.arMgr.savedRegOffset() + i,6)); //when return, reg[6] is base addr of callee AR
+			char num[]="0";
+			num[0] += i;
+			currentBlock.add(imMgr.newIM(LD ,i,pb.arMgr.savedRegOffset() + i,6,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", returning from call, recover Register "+num+", R6 is callee's AR base")); //when return, reg[6] is base addr of callee AR
 		}
 		//after LD reg[6] will recover and become base addr of caller AR
 		//and reg[0] will become callee AR
-		currentBlock.add(imMgr.newIM(LD,4,pb.arMgr.returnValueOffset(),0));
-		currentBlock.add(imMgr.newIM(ST,4,m,6));
+		currentBlock.add(imMgr.newIM(LD,4,pb.arMgr.returnValueOffset(),0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", get the return value"));
+		currentBlock.add(imMgr.newIM(ST,4,m,6,CPN+"(b)@"+nd2line(sn)+" exp:call->"+cee+", stroe the return value to dMem"));
 		break;
 	}
 	case ASTN_plus:{
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		unsigned ex;
-		ex = imMgr.newIM(ST,3,m,6);
+		ex = imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:+, store the result(R3) to dMen, also the target of bool + short cut.");
 		if (sn.reload() == ice9int) {
 			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-			currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-			currentBlock.add(imMgr.newIM(ADD,3,1,0));
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:+:int, load the value of 1st exp to R0"));
+			currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:+:int, load the value of 2nd exp to R1"));
+			currentBlock.add(imMgr.newIM(ADD,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:+:int, R3=R1+R0"));
 		}
 		else { //short cut is used
-			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-			currentBlock.add(imMgr.newIM(JEQ,0,2,7));
-			currentBlock.add(imMgr.newIM(LDC,3,1,0));
-			currentBlock.add(imMgr.newIM(ex));
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, load the value of the 1st exp to R0"));
+			currentBlock.add(imMgr.newIM(JEQ,0,2,7,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, if R0=0(false), skip next 2 instruction"));
+			currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, R3=1, load the result to R3"));
+			currentBlock.add(imMgr.newIM(ex,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, goto shortcut target"));
 			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-			currentBlock.add(imMgr.newIM(JEQ,0,2,7));
-			currentBlock.add(imMgr.newIM(LDC,3,1,0));
-			currentBlock.add(imMgr.newIM(ex));
-			currentBlock.add(imMgr.newIM(LDC,3,0,0));
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, load the value of 2nd exp to R0"));
+			currentBlock.add(imMgr.newIM(JEQ,0,2,7,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, if R0=0(false) skip next 2 instruction"));
+			currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, R3=1, load the result to R3"));
+			currentBlock.add(imMgr.newIM(ex,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, goto shortcut target (skip next instruction)"));
+			currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:+:bool, R3=0, load the result to R3"));
 		}
 		currentBlock.add(ex);
 		break;
@@ -432,40 +440,42 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 	case ASTN_minus:
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(SUB,2,0,1));
-		currentBlock.add(imMgr.newIM(ST,2,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:-, load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:-, load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:-, R2=R0-R1"));
+		currentBlock.add(imMgr.newIM(ST,2,m,6,CPN+"(b)@"+nd2line(sn)+" exp:-, store result(R2) back to dMem"));
 		break;
 	case ASTN_mod:
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(DIV,2,0,1));
-		currentBlock.add(imMgr.newIM(MUL,3,2,1));
-		currentBlock.add(imMgr.newIM(SUB,3,0,3));
-		currentBlock.add(imMgr.newIM(ST ,3,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:%, load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:%, load the value of 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(DIV,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:%, R2=R0/R1"));
+		currentBlock.add(imMgr.newIM(MUL,3,2,1,CPN+"(b)@"+nd2line(sn)+" exp:%, R3=R1*R2"));
+		currentBlock.add(imMgr.newIM(SUB,3,0,3,CPN+"(b)@"+nd2line(sn)+" exp:%, R3=R0-R3, final result"));
+		currentBlock.add(imMgr.newIM(ST ,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:%, store the result back to dMem"));
 		break;
 	case ASTN_star:{
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		unsigned ex;
-		ex = imMgr.newIM(ST,3,m,6);
+		ex = imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:*, store the result back to dMem, also the shortcut target.");
 		if (sn.reload() == ice9int) {
 			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-			currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-			currentBlock.add(imMgr.newIM(MUL,3,1,0));
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:*:int, load the value of the 1st exp to R0"));
+			currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:*:int, load the value of the 2nd exp to R1"));
+			currentBlock.add(imMgr.newIM(MUL,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:*:int, R3=R1*R0, final result"));
 		}
 		else { //short cut is used
-			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-			currentBlock.add(imMgr.newIM(JNE,0,2,7));
-			currentBlock.add(imMgr.newIM(LDC,3,0,0));
-			currentBlock.add(imMgr.newIM(ex));
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, load the value of the 1st exp to R0"));
+			currentBlock.add(imMgr.newIM(JNE,0,2,7,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, if R0!=0(R0 is true), skip next two"));
+			currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, set R3=0, final result"));
+			currentBlock.add(imMgr.newIM(ex,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, goto shortcut target"));
 			attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-			currentBlock.add(imMgr.newIM(JNE,0,2,7));
-			currentBlock.add(imMgr.newIM(LDC,3,0,0));
-			currentBlock.add(imMgr.newIM(ex));
-			currentBlock.add(imMgr.newIM(LDC,3,1,0));
+			currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, load the value of the 2nd exp to R0"));
+			currentBlock.add(imMgr.newIM(JNE,0,2,7,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, if R0!=0(R0 is true), skip next 2"));
+			currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, set R3=0, final result"));
+			currentBlock.add(imMgr.newIM(ex,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, jump to shortcut target(skip next)"));
+			currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:*:bool, R3=1, final result"));
 		}
 		currentBlock.add(ex);
 		break;
@@ -473,80 +483,92 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 	case ASTN_div:
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(DIV,2,0,1));
-		currentBlock.add(imMgr.newIM(ST,2,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:/, load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:/, load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(DIV,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:/, R2=R0/R1, final result"));
+		currentBlock.add(imMgr.newIM(ST,2,m,6,CPN+"(b)@"+nd2line(sn)+" exp:/, stire the result back to dMem"));
 		break;
-	case ASTN_eq:
+	case ASTN_eq: {
+		char *op="=";
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(SUB,2,0,1));
-		currentBlock.add(imMgr.newIM(LDC,3,1,0));
-		currentBlock.add(imMgr.newIM(JEQ,2,1,7));
-		currentBlock.add(imMgr.newIM(LDC,3,0,0));
-		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R2=R0-R1"));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=1 (true)"));
+		currentBlock.add(imMgr.newIM(JEQ,2,1,7,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", if R2"+op+"0, skip next"));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=0 (false)"));
+		currentBlock.add(imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", stroe back the result to dMem"));
 		break;
-	case ASTN_neq:
+	}
+	case ASTN_neq: {
+		char *op="!=";
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(SUB,2,0,1));
-		currentBlock.add(imMgr.newIM(LDC,3,0,0));
-		currentBlock.add(imMgr.newIM(JEQ,2,1,7));
-		currentBlock.add(imMgr.newIM(LDC,3,1,0));
-		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R2=R0-R1"));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=1 (true)"));
+		currentBlock.add(imMgr.newIM(JNE,2,1,7,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", if R2"+op+"0, skip next"));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=0 (false)"));
+		currentBlock.add(imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", stroe back the result to dMem"));
 		break;
-	case ASTN_gt:
+	}
+	case ASTN_gt: {
+		char *op=">";
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(SUB,2,0,1));
-		currentBlock.add(imMgr.newIM(LDC,3,1,0));
-		currentBlock.add(imMgr.newIM(JGT,2,1,7));
-		currentBlock.add(imMgr.newIM(LDC,3,0,0));
-		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R2=R0-R1"));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=1 (true)"));
+		currentBlock.add(imMgr.newIM(JGT,2,1,7,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", if R2"+op+"0, skip next"));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=0 (false)"));
+		currentBlock.add(imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", stroe back the result to dMem"));
 		break;
-	case ASTN_ge:
+	}
+	case ASTN_ge: {
+		char *op=">=";
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(SUB,2,0,1));
-		currentBlock.add(imMgr.newIM(LDC,3,1,0));
-		currentBlock.add(imMgr.newIM(JGE,2,1,7));
-		currentBlock.add(imMgr.newIM(LDC,3,0,0));
-		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R2=R0-R1"));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=1 (true)"));
+		currentBlock.add(imMgr.newIM(JGE,2,1,7,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", if R2"+op+"0, skip next"));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=0 (false)"));
+		currentBlock.add(imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", stroe back the result to dMem"));
 		break;
-	case ASTN_lt:
+	}
+	case ASTN_lt: {
+		char *op="<";
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(SUB,2,0,1));
-		currentBlock.add(imMgr.newIM(LDC,3,1,0));
-		currentBlock.add(imMgr.newIM(JLT,2,1,7));
-		currentBlock.add(imMgr.newIM(LDC,3,0,0));
-		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R2=R0-R1"));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=1 (true)"));
+		currentBlock.add(imMgr.newIM(JLE,2,1,7,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", if R2"+op+"0, skip next"));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=0 (false)"));
+		currentBlock.add(imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", stroe back the result to dMem"));
 		break;
-	case ASTN_le:
+	}
+	case ASTN_le: {
+		char *op="<=";
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,0),currentBlock, currentBlockVector);
 		attachExpIM(arMgr,sn.getChild(ASTN_exp,1),currentBlock, currentBlockVector);
-		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6));
-		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6));
-		currentBlock.add(imMgr.newIM(SUB,2,0,1));
-		currentBlock.add(imMgr.newIM(LDC,3,1,0));
-		currentBlock.add(imMgr.newIM(JLE,2,1,7));
-		currentBlock.add(imMgr.newIM(LDC,3,0,0));
-		currentBlock.add(imMgr.newIM(ST,3,m,6));
+		currentBlock.add(imMgr.newIM(LD,0,arMgr.lookupExp(sn.getChild(ASTN_exp,0)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 1st exp to R0"));
+		currentBlock.add(imMgr.newIM(LD,1,arMgr.lookupExp(sn.getChild(ASTN_exp,1)),6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", load the value of the 2nd exp to R1"));
+		currentBlock.add(imMgr.newIM(SUB,2,0,1,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R2=R0-R1"));
+		currentBlock.add(imMgr.newIM(LDC,3,1,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=1 (true)"));
+		currentBlock.add(imMgr.newIM(JLE,2,1,7,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", if R2"+op+"0, skip next"));
+		currentBlock.add(imMgr.newIM(LDC,3,0,0,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", R3=0 (false)"));
+		currentBlock.add(imMgr.newIM(ST,3,m,6,CPN+"(b)@"+nd2line(sn)+" exp:"+op+", stroe back the result to dMem"));
 		break;
+	}
 	case ASTN_read:
-		currentBlock.add(imMgr.newIM(IN,0,0,0));
-		currentBlock.add(imMgr.newIM(ST,0,m,6));
+		currentBlock.add(imMgr.newIM(IN,0,0,0,CPN+"(b)@"+nd2line(sn)+" exp:read, read in one number"));
+		currentBlock.add(imMgr.newIM(ST,0,m,6,CPN+"(b)@"+nd2line(sn)+" exp:read, store it into dMem"));
 	}
 }
 

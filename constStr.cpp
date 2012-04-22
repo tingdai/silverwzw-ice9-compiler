@@ -55,6 +55,19 @@ void constTable2TM(std::ostream &os) {
 	max = strTab.size();
 	for (i = 0; i < max; i++) {
 		os << ".DATA " << (strTab[i].str.length()) << '\n';
-		os << ".SDATA \"" << (strTab[i].str) << "\"\n";
+		if (strTab[i].str.find("\"") == std::string::npos) {
+			os << ".SDATA \"" << (strTab[i].str) << "\"\n";
+		}
+		else {
+			size_t found;
+			std::string tmpstr;
+			tmpstr = strTab[i].str;
+			while ((found = tmpstr.find("\"")) != std::string::npos) {
+				os << ".SDATA \"" << tmpstr.substr(0,found) <<"\"\n";
+				os << ".DATA 34\n";
+				tmpstr = tmpstr.substr(found+1);
+			}
+			os << ".SDATA \"" << tmpstr << "\"\n";
+		}
 	}
 }

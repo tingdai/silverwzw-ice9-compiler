@@ -45,6 +45,7 @@ public:
 	void popFa();
 	void freeTmp();
 	bool isFa(Varname);
+	virtual bool isGlobal(Varname);
 	MemOffset currentForTop();
 };
 
@@ -52,6 +53,7 @@ class GlobalARMgr : public ARMgr {
 public:
 	virtual MemOffset insert(Varname);
 	virtual MemOffset insertArray(Varname, std::vector<unsigned>);
+	virtual bool isGlobal(Varname);
 };
 
 #endif

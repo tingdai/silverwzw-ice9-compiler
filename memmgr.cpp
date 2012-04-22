@@ -44,6 +44,20 @@ MemOffset ARMgr::lookupVar(Varname n) {
 	assert(false);
 }
 
+bool ARMgr::isGlobal(Varname n) {
+	if(isFa(n)) {
+		return false;
+	}
+	if (localVar.find(n)!=localVar.end()) {
+		return false;
+	}
+	assert(globalVar.find(n)!=global.end());
+	return true;
+}
+
+bool GlobalARMgr::isGlobal(Varname n) {
+	return false;
+}
 
 MemOffset ARMgr::lookupExp(SemanticNode nd) {
 	if (!(localTmp.find(nd) == localTmp.end())) {

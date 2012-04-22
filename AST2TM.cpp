@@ -43,47 +43,31 @@ void buildProcBlock(SemanticNode nd) {
 		ProcBlock &pb = procBlocks[nd.getChild(ASTN_L_id, 0).idValue()];
 		tmpBlock.add(imMgr.newIM(LDA,5,0,5,CPN+"(b)@"+nd2line(nd)+" NOOP, entrance of proc, build by forward node"));
 		pb.add(tmpBlock);
-		pb.arMgr.forceInsert(nd.getChild(ASTN_L_id,0).idValue(), 0);
-		if (nd.getChildCount(ASTN_declistx) != 0) {
-			SemanticNode declistxnd;
-			unsigned i,j,max,k;
-			declistxnd = nd.getChild(ASTN_declistx, 0);
-			max = declistxnd.getChildCount(ASTN_declist);
-			for ( i = 0; i < max; i++) {// for each declist
-				SemanticNode idlistnd;
-				idlistnd = declistxnd.getChild(ASTN_declist, i).getChild(ASTN_idlist,0);
-				k = idlistnd.getChildCount(ASTN_L_id);
-				for(j = 0; j < k; j++) {
-					pb.arMgr.pushPara(idlistnd.getChild(ASTN_L_id, j).idValue());
-				}
-			}
-			
-		}
 		return;
 	}
 
 	//if proc node:
-	if (procBlocks.find(nd.getChild(ASTN_L_id,0).idValue()) == procBlocks.end()) { // if no forward, build AR structure
-		ProcBlock &pb = procBlocks[nd.getChild(ASTN_L_id, 0).idValue()];
-		pb.arMgr.forceInsert(nd.getChild(ASTN_L_id,0).idValue(), 0);
-		if (nd.getChildCount(ASTN_declistx) != 0) {
-			SemanticNode declistxnd;
-			unsigned i,j,max,k;
-			declistxnd = nd.getChild(ASTN_declistx, 0);
-			max = declistxnd.getChildCount(ASTN_declist);
-			for ( i = 0; i < max; i++) {// for each declist
-				SemanticNode idlistnd;
-				idlistnd = declistxnd.getChild(ASTN_declist, i).getChild(ASTN_idlist,0);
-				k = idlistnd.getChildCount(ASTN_L_id);
-				for(j = 0; j < k; j++) {
-					pb.arMgr.pushPara(idlistnd.getChild(ASTN_L_id, j).idValue());
-				}
-			}
-			
-		}
+	if (procBlocks.find(nd.getChild(ASTN_L_id,0).idValue()) == procBlocks.end()) { // if no forward
+		procBlocks[nd.getChild(ASTN_L_id, 0).idValue()];
 	}
-
-	ProcBlock &pb = procBlocks[nd.getChild(ASTN_L_id,0).idValue()];
+	ProcBlock &pb = procBlocks[nd.getChild(ASTN_L_id, 0).idValue()];
+	pb.arMgr.forceInsert(nd.getChild(ASTN_L_id,0).idValue(), 0);
+	if (nd.getChildCount(ASTN_declistx) != 0) {
+		SemanticNode declistxnd;
+		unsigned i,j,max,k;
+		declistxnd = nd.getChild(ASTN_declistx, 0);
+		max = declistxnd.getChildCount(ASTN_declist);
+		for ( i = 0; i < max; i++) {// for each declist
+			SemanticNode idlistnd;
+			idlistnd = declistxnd.getChild(ASTN_declist, i).getChild(ASTN_idlist,0);
+			k = idlistnd.getChildCount(ASTN_L_id);
+			for(j = 0; j < k; j++) {
+				pb.arMgr.pushPara(idlistnd.getChild(ASTN_L_id, j).idValue());
+			}
+		}
+		
+	}
+	
 	currentProcName = nd.getChild(ASTN_L_id, 0).idValue();
 
 	if (nd.getChildCount(ASTN_dec1s) != 0) {
@@ -224,9 +208,18 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 		break;
 	case ASTN_assign: {
 		std::vector<unsigned> v;
+		char *varn;
 		lvl = sn.getChild(ASTN_lvalue, 0);
 		v = varJumper.lookupDim(currentProcName, lvl.getChild(ASTN_L_id, 0).idValue());
-		currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(lvl.getChild(ASTN_L_id, 0).idValue()),6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the pointer of LHS id to R4"));
+		varn = lvl.getChild(ASTN_L_id, 0).idValue();
+		if (!arMgr.isGlobal(varn)) {
+			currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(varn),6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the pointer of LHS id to R4"));
+		}
+		else {
+			currentBlock.add(imMgr.newIM(LDC, 0, 0, 0,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, LHS is global, set R0=0"));
+			currentBlock.add(imMgr.newIM(LD , 0, 0, 0,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, R0=dMem[0], the global AR base"));
+			currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(varn), 0,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the pointer to the global variable"));
+		}
 		unsigned i,j,max,k,size;
 		size = 1;
 		max = v.size();
@@ -320,8 +313,17 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 		}
 		else {
 			std::vector<unsigned> v;
+			char *varn;
+			varn = sn.getChild(ASTN_L_id, 0).idValue();
 			v = varJumper.lookupDim(currentProcName, sn.getChild(ASTN_L_id, 0).idValue());
-			currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(sn.getChild(ASTN_L_id, 0).idValue()),6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the pointer"));
+			if (!arMgr.isGlobal(varn)) {
+				currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(varn),6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the pointer"));
+			}
+			else {
+				currentBlock.add(imMgr.newIM(LDC, 0, 0, 0,CPN+"(b)@"+nd2line(sn)+" exp:lvl, LHS is global, set R0=0"));
+				currentBlock.add(imMgr.newIM(LD , 0, 0, 0,CPN+"(b)@"+nd2line(sn)+" exp:lvl, R0=dMem[0], the global AR base"));
+				currentBlock.add(imMgr.newIM(LDA, 4, arMgr.lookupVar(varn), 0,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the pointer to the global variable"));
+			}
 			unsigned i,j,max,k,size,of;
 			size = 1;
 			max = v.size();
@@ -395,17 +397,17 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 		for(i = 0; i < 7; i++) {
 			char num[]="0";
 			num[0] += i;
-			currentBlock.add(imMgr.newIM(ST ,i,pb.arMgr.savedRegOffset() + i,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push Register "+num+" to callee AR"));
+			currentBlock.add(imMgr.newIM(ST ,i,1 + max + i,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push Register "+num+" to callee AR"));
 		}
 		currentBlock.add(imMgr.newIM(LDA,5,arMgr.currentForTop(),5,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", update Fa counter for callee"));
 		currentBlock.add(imMgr.newIM(LDA,6,0,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", R6=R0, update AR for callee"));
 		currentBlock.add(imMgr.newIM(LDA,2,2,7,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", R2=PC+2, the fixed PC to be pushed into callee"));
-		currentBlock.add(imMgr.newIM(ST ,2,pb.arMgr.savedRegOffset() + 7,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push R2(=PC+1, fixed PC) to callee AR, it's also the return address for callee"));
+		currentBlock.add(imMgr.newIM(ST ,2,1 + max + 7,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", push R2(=PC+1, fixed PC) to callee AR, it's also the return address for callee"));
 		currentBlock.add(imMgr.newIM(pb.entrance(),CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", goto callee blocks"));
 		for(i = 0; i < 7; i++) {
 			char num[]="0";
 			num[0] += i;
-			currentBlock.add(imMgr.newIM(LD ,i,pb.arMgr.savedRegOffset() + i,6,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", returning from call, recover Register "+num+", R6 is callee's AR base")); //when return, reg[6] is base addr of callee AR
+			currentBlock.add(imMgr.newIM(LD ,i,1 + max + i,6,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", returning from call, recover Register "+num+", R6 is callee's AR base")); //when return, reg[6] is base addr of callee AR
 		}
 		//after LD reg[6] will recover and become base addr of caller AR
 		//and reg[0] will become callee AR
@@ -662,6 +664,8 @@ void AST2TM(std::ostream &os) {
 	gBlocks.push_back(entranceBlock);
 	tmpBlock.add(imMgr.newIM(LDC, 5, 0, 0, "main(c): R5 points to dMem[0]"));
 	tmpBlock.add(imMgr.newIM(LD , 5, 0, 5, "main(c): R5 = dMem[0] (Initialize Fa pointer)"));
+	tmpBlock.add(imMgr.newIM(LDC, 0, 0, 0, "main(c): R0 = 0, points to dMem[0]"));
+	tmpBlock.add(imMgr.newIM(ST , 6, 0, 0, "main(c): dMem[0] = R6 store global AR base at dMem[0]"));
 	exitIM = imMgr.newIM(HALT,0, 0, 0, "main(c): program exit");
 
 	en = buildMain(gARMgr, tr, gBlocks, exitIM);

@@ -280,7 +280,7 @@ SemanticNode SemanticNode::getChild(unsigned i) {
 	AST *ptr;
 	ptr = data -> child;
 	assert(ptr != NULL);
-	for (j = 1; j < i; j++) {
+	for (j = 0; j < i; j++) {
 		ptr = ptr -> brother;
 		assert(ptr != NULL);
 	}

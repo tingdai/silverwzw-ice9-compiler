@@ -90,28 +90,23 @@ void buildProcBlock(SemanticNode nd) {
 		char *procName;
 		SemanticNode decsnd;
 		decsnd = nd.getChild(ASTN_dec1s, 0);
-		max = decsnd.getChildCount(ASTN_var);
+		max = decsnd.getChildCount(ASTN_varlist);
 		procName = nd.getChild(ASTN_L_id,0).idValue();
 
 		for(i = 0; i < max; i++) {
-			SemanticNode sn;
-			sn = decsnd.getChild(ASTN_var, i);
-			k = sn.getChildCount();
-			for(j = 0; j < k; j++) {  //each varlist
-				SemanticNode sn1;
-				std::vector<unsigned> dim;
-				sn1 = sn.getChild(ASTN_varlist, j);
-				dim = typeChecker(procName, sn1);
-				b = sn1.getChild(ASTN_idlist).getChildCount(ASTN_L_id);
-				for(a = 0; a < b; a++) {	//each var
-					char *varName;         //update AR structure
-					varName = sn1.getChild(ASTN_idlist).getChild(ASTN_L_id, a).idValue();
-					if(dim.empty() || dim.size() == 0) {
-						pb.arMgr.insert(varName);
-					}
-					else {
-						pb.arMgr.insertArray(varName,dim);
-					}
+			SemanticNode sn1;
+			std::vector<unsigned> dim;
+			sn1 = decsnd.getChild(ASTN_varlist, i);
+			dim = typeChecker(procName, sn1);
+			b = sn1.getChild(ASTN_idlist, 0).getChildCount(ASTN_L_id);
+			for(a = 0; a < b; a++) {	//each var
+				char *varName;         //update AR structure
+				varName = sn1.getChild(ASTN_idlist, 0).getChild(ASTN_L_id, a).idValue();
+				if(dim.empty() || dim.size() == 0) {
+					pb.arMgr.insert(varName);
+				}
+				else {
+					pb.arMgr.insertArray(varName,dim);
 				}
 			}
 		}

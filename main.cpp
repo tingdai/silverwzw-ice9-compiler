@@ -1,9 +1,11 @@
+#include <fstream>
 #include "semantic.h"
 #include "AST2TM.h"
-int main() {
+int main(int argc, char *argv[]) {
 	parse();
 	SemanticTree semanticTree;
 	semanticCheck(semanticTree);
-	AST2TM(std::cout);
+	std::ofstream os(argv[1]);
+	AST2TM(os);
 	return 0;
 }

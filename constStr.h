@@ -7,4 +7,5 @@ void buildConstTable();
 unsigned lookupStr(std::string);
 void constTable2TM(std::ostream&);
 unsigned ARhead();
+void addStr(std::string);
 #endif

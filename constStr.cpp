@@ -20,11 +20,7 @@ void nodecheck(SemanticNode nd) {
 	max = nd.getChildCount();
 	if (max == 0) {
 		if(nd.type() == ASTN_L_string) {
-			strConst tmp;
-			tmp.str = nd.strValue();
-			tmp.offset = AROffset;
-			AROffset += tmp.str.size() + 1;
-			strTab.push_back(tmp);
+			addStr(nd.strValue());
 		}
 	}
 	else {
@@ -32,6 +28,14 @@ void nodecheck(SemanticNode nd) {
 			nodecheck(nd.getChild(i));
 		}
 	}
+}
+
+void addStr(std::string str) {
+	strConst tmp;
+	tmp.str = str;
+	tmp.offset = AROffset;
+	AROffset += tmp.str.size() + 1;
+	strTab.push_back(tmp);
 }
 
 void buildConstTable() {

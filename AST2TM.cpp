@@ -16,6 +16,7 @@ std::map<std::string, ProcBlock> procBlocks;
 std::vector<Block> gBlocks;
 std::vector<unsigned> currentBreakTarget;
 std::string currentProcName;
+unsigned runTimeErrorEntrance;
 
 inline std::string pN(std::string n) {
 	return (n == "0")?"main":n;
@@ -233,8 +234,14 @@ void attachStmIM(ARMgr & arMgr, SemanticNode nd, Block &currentBlock, std::vecto
 			size /= v[i];
 			currentBlock.add(imMgr.newIM(ST,4,of,6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, about to evalueate the subscript, protect the pointer R4"));
 			attachExpIM(arMgr, lvl.getChild(ASTN_exp, i), currentBlock, currentBlockVector);
-			currentBlock.add(imMgr.newIM(LD, 4, of, 6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, subscript evaluation finished, recover R4 the pointer"));
 			currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(lvl.getChild(ASTN_exp, i)), 6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the value of subscript to R3"));
+			currentBlock.add(imMgr.newIM(JGE,3,1,7,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, if subscript>=0 skip next"));
+			currentBlock.add(imMgr.newIM(runTimeErrorEntrance, CPN+"(b)@"+nd2line(lvl)+" assign:LHS, go to runtime error handling"));
+			currentBlock.add(imMgr.newIM(LDC,4,v[i],0,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the upper bound of subscript"));
+			currentBlock.add(imMgr.newIM(SUB,4,4,3,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, R4=R4-R3, test if runtime error"));
+			currentBlock.add(imMgr.newIM(JGT,4,1,7,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, R4>0, skip next instruction"));
+			currentBlock.add(imMgr.newIM(runTimeErrorEntrance, CPN+"(b)@"+nd2line(lvl)+" assign:LHS, go to runtime error handling"));
+			currentBlock.add(imMgr.newIM(LD, 4, of, 6,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, subscript evaluation finished, recover R4 the pointer"));
 			currentBlock.add(imMgr.newIM(LDC,2,size,0,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, load the \"range\" of the pointer to R2"));
 			currentBlock.add(imMgr.newIM(MUL,3,3,2,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, R3 = R3*R2, calcuate the offset to next position"));
 			currentBlock.add(imMgr.newIM(ADD,4,4,3,CPN+"(b)@"+nd2line(lvl)+" assign:LHS, R4=R4+R3, move R4 the pointer to next position"));
@@ -336,8 +343,14 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 				size /= v[i];
 				currentBlock.add(imMgr.newIM(ST,4,of,6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, about to evaluate the subscript, protect the pointer R4"));
 				attachExpIM(arMgr, sn.getChild(ASTN_exp, i), currentBlock, currentBlockVector);
-				currentBlock.add(imMgr.newIM(LD,4,of,6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, subscript exp evaluation finished, recover the pointer R4"));
 				currentBlock.add(imMgr.newIM(LD, 3, arMgr.lookupExp(sn.getChild(ASTN_exp, i)), 6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the value of subscript to R3"));
+				currentBlock.add(imMgr.newIM(JGE,3,1,7,CPN+"(b)@"+nd2line(sn)+" exp:lvl, if R3>=0 skip next instruction"));
+				currentBlock.add(imMgr.newIM(runTimeErrorEntrance,CPN+"(b)@"+nd2line(sn)+" exp:lvl, goto runtime Error handling"));
+				currentBlock.add(imMgr.newIM(LDC,4,v[i],0,CPN+"(b)@"+nd2line(sn)+" exp:lvl, R4=upper bound of subscription"));
+				currentBlock.add(imMgr.newIM(SUB,4,4,3,CPN+"(b)@"+nd2line(sn)+" exp:lvl, R4=R4-R3"));
+				currentBlock.add(imMgr.newIM(JGT,4,1,7,CPN+"(b)@"+nd2line(sn)+" exp:lvl, R4>0, skip next instruction"));
+				currentBlock.add(imMgr.newIM(runTimeErrorEntrance,CPN+"(b)@"+nd2line(sn)+" exp:lvl, go to runtime error handler"));
+				currentBlock.add(imMgr.newIM(LD,4,of,6,CPN+"(b)@"+nd2line(sn)+" exp:lvl, subscript exp evaluation finished, recover the pointer R4"));
 				currentBlock.add(imMgr.newIM(LDC,2,size,0,CPN+"(b)@"+nd2line(sn)+" exp:lvl, load the range of the pointer to R2"));
 				currentBlock.add(imMgr.newIM(MUL,3,3,2,CPN+"(b)@"+nd2line(sn)+" exp:lvl, calculate the offset to next position"));
 				currentBlock.add(imMgr.newIM(ADD,4,4,3,CPN+"(b)@"+nd2line(sn)+" exp:lvl, move pointer R4 to next position"));
@@ -391,7 +404,7 @@ void attachExpIM(ARMgr &arMgr, SemanticNode nd, Block &currentBlock, std::vector
 		for(i = 0; i < max; i++) {
 			char num[]="0";
 			num[0] += i;
-			currentBlock.add(imMgr.newIM(LD,2,arMgr.lookupExp(sn.getChild(ASTN_exp,i)),6,CPN+"(c)@"+nd2line(sn)+"exp:call->"+cee+", load the value of parameter "+num+" from caller AR"));
+			currentBlock.add(imMgr.newIM(LD,2,arMgr.lookupExp(sn.getChild(ASTN_exp,i)),6,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", load the value of parameter "+num+" from caller AR"));
 			currentBlock.add(imMgr.newIM(ST,2,pb.arMgr.parametersOffset() + i,0,CPN+"(c)@"+nd2line(sn)+" exp:call->"+cee+", stroe the value of parameter "+num+" to callee AR"));
 		}
 		for(i = 0; i < 7; i++) {
@@ -656,6 +669,7 @@ void AST2TM(std::ostream &os) {
 	Block tmpBlock, entranceBlock;
 	GlobalARMgr gARMgr;
 
+	addStr("Runtime Error!");
 	buildConstTable();
 	currentProcName = "0";
 
@@ -666,7 +680,9 @@ void AST2TM(std::ostream &os) {
 	tmpBlock.add(imMgr.newIM(LD , 5, 0, 5, "main(c): R5 = dMem[0] (Initialize Fa pointer)"));
 	tmpBlock.add(imMgr.newIM(LDC, 0, 0, 0, "main(c): R0 = 0, points to dMem[0]"));
 	tmpBlock.add(imMgr.newIM(ST , 6, 0, 0, "main(c): dMem[0] = R6 store global AR base at dMem[0]"));
+
 	exitIM = imMgr.newIM(HALT,0, 0, 0, "main(c): program exit");
+	runTimeErrorEntrance = imMgr.newIM(LDC,0,lookupStr("Runtime Error!"),0,"Error(c): Runtime Error Handling, Load Error Message Pointer to R0");
 
 	en = buildMain(gARMgr, tr, gBlocks, exitIM);
 	tmpBlock.add(imMgr.newIM(LDA,4,2,7,"main(c): reg[4] now store PC+2 which is exit of the program"));
@@ -674,6 +690,20 @@ void AST2TM(std::ostream &os) {
 
 	tmpBlock.add(imMgr.newIM(en, "main(c): goto body of main (stms)"));
 	tmpBlock.add(exitIM);
+
+	tmpBlock.add(runTimeErrorEntrance);
+	tmpBlock.add(imMgr.newIM(LD,1,0,0,"Error(c): Load char number to R1"));
+	tmpBlock.add(imMgr.newIM(LDA,0,1,0,"Error(c): INC R0, R0 points to beginning of str"));
+	tmpBlock.add(imMgr.newIM(ADD,1,0,1,"Error(c): R1=R0+R1, R1 now points to the end of the string"));
+	tmpBlock.add(imMgr.newIM(SUB,2,1,0,"Error(c): R2=R1-R0, remaining char"));
+	tmpBlock.add(imMgr.newIM(JGT,2,2,7,"Error(c): if R2>0, skip next 2 instruction"));
+	tmpBlock.add(imMgr.newIM(OUTNL,0,0,0,"Error(c): output newline"));
+	tmpBlock.add(imMgr.newIM(HALT,0,0,0,"Error(c): runtime error halt"));
+	tmpBlock.add(imMgr.newIM(LD,3,0,0,"Error(c): R3=dMen[R0]"));
+	tmpBlock.add(imMgr.newIM(OUTC,3,0,0,"Error(c): output R3"));
+	tmpBlock.add(imMgr.newIM(LDA,0,1,0,"Error(c): INC R0, R0 now points to next char to be wrote"));
+	tmpBlock.add(imMgr.newIM(LDA,7,-8,7,"Error(c): loop"));
+
 	gBlocks.push_back(tmpBlock);
 
 	max = gBlocks.size();

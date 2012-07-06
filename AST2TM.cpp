@@ -1,7 +1,7 @@
 #include <cassert>
 #include <map>
 #include <iostream>
-#include <string>
+#include <cstring>
 #include <string>
 #include <sstream>
 #include "semantic.h"

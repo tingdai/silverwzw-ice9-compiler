@@ -1226,7 +1226,7 @@ int semanticCheck(SemanticTree tr) {
 }
 
 bool SemanticNode::gt(SemanticNode sn2) {
-	return ((unsigned)(data))>((unsigned)(sn2.data));
+	return data > sn2.data;
 }
 
 bool operator<=(SemanticNode sn1, SemanticNode sn2) {

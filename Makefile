@@ -2,11 +2,10 @@ CFLAGS	= -Wall -pedantic -std=c99
 DEBUG =
 FIX =
 
-LIB	= -lfl
 SRC	= ice9.l ice9.y
 
 ice9:	ice9.yy$(FIX).o ice9.tab$(FIX).o ast$(FIX).o semantic$(FIX).o main$(FIX).o typejumper$(FIX).o ast2tm$(FIX).o conststr$(FIX).o memmgr$(FIX).o instruct$(FIX).o
-	g++ -o $@ $^ $(LIB)
+	g++ -o $@ $^ 
 
 ice9.tab.c: ice9.y
 	bison -d -t -v -o $@ $<
